@@ -591,8 +591,8 @@
     font-size: 9px;
     letter-spacing: 0.15em;
     text-transform: uppercase;
-    color: var(--ink-faint);
-    font-weight: 500;
+    color: var(--ink);
+    font-weight: 600;
     margin-top: 6px;
     line-height: 1.3;
     display: block;
@@ -1844,17 +1844,22 @@
     }
     emptyEl.hidden = true;
 
-    const allSameRating = wines.every(w => w.rating === wines[0].rating);
-    listEl.classList.toggle("is-single-rating", allSameRating);
-    listEl.classList.toggle("is-mixed", !allSameRating);
+    // Show rating context under each rank when user is in the "All wines"
+    // view (state.rating === null) — even if filters narrow results down to
+    // a single rating, user still sees which rating each wine came from.
+    // When a specific rating is selected, the heading already shows it,
+    // so per-card context is redundant.
+    const showRatingContext = state.rating === null;
+    listEl.classList.toggle("is-single-rating", !showRatingContext);
+    listEl.classList.toggle("is-mixed", showRatingContext);
 
-    // Only apply default rating+rank ordering when user sort is "default";
+    // Default ordering by rating+rank only when user sort is "default";
     // otherwise respect the order coming in from the user-chosen sort.
     if (state.sort === "default" || !state.sort) {
       const ratingOrder = {};
       RATINGS.forEach((r, i) => ratingOrder[r] = i);
       wines.sort((a, b) => {
-        if (allSameRating) return a.rank - b.rank;
+        if (!showRatingContext) return a.rank - b.rank;
         const da = ratingOrder[a.rating] ?? 999;
         const db = ratingOrder[b.rating] ?? 999;
         if (da !== db) return da - db;
@@ -1862,7 +1867,7 @@
       });
     }
 
-    listEl.innerHTML = wines.map(w => entryHtml(w, allSameRating)).join("");
+    listEl.innerHTML = wines.map(w => entryHtml(w, !showRatingContext)).join("");
 
     listEl.querySelectorAll("[data-grape]").forEach(el => {
       el.addEventListener("click", () => {
