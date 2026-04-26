@@ -822,80 +822,93 @@
     text-align: right;
   }
 
-  /* Mobile: stack the entry */
+  /* Mobile: stack the entry vertically. Use a 2-column grid so that the
+     rank can sit on the same line as the title, while everything else
+     (photo, tags, meta, aside) spans both columns below. */
   @media (max-width: 880px) {
     .fg-entry {
+      display: grid;
       grid-template-columns: auto 1fr;
-      grid-template-areas:
-        "rank  title"
-        "photo photo"
-        "body  body"
-        "aside aside";
-      grid-template-rows: auto auto auto auto;
-      column-gap: 14px;
-      row-gap: 14px;
+      grid-template-areas: none;
+      grid-template-rows: none;
+      align-content: start;
+      gap: 0;
+      column-gap: 12px;
       padding: 28px 0;
       min-height: 0;
       border-top: none;
     }
     .fg-entries .fg-entry:first-child { padding-top: 8px; }
+
+    /* Header is a transparent wrapper — rank and title become direct grid items
+       so they sit on the same row. */
+    .fg-entry__header { display: contents; }
+
     .fg-entry__rank {
-      grid-area: rank;
-      font-size: 36px;
+      grid-area: auto;
+      grid-column: 1;
+      font-size: 32px;
       text-align: left;
       padding-top: 0;
+      align-self: start;
       display: flex;
       flex-direction: row;
-      gap: 10px;
+      gap: 8px;
       align-items: baseline;
+      line-height: 1.25;
     }
     .fg-entry__rank::after {
       display: none;
     }
     .fg-entry__rank-context {
       margin-top: 0;
+      font-size: 8px;
     }
-    .fg-entries.is-mixed .fg-entry__rank { font-size: 28px; }
+    .fg-entries.is-mixed .fg-entry__rank { font-size: 26px; }
+
+    .fg-entry__title {
+      grid-area: auto;
+      grid-column: 2;
+      font-size: 18px;
+      line-height: 1.3;
+      margin: 0;
+      padding-top: 4px;
+      align-self: start;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    /* Everything below the header row spans full width with a top gap */
     .fg-entry__photo {
-      grid-area: photo;
+      grid-area: auto;
+      grid-column: 1 / -1;
       width: 100%;
       max-width: none;
       height: 360px;
       min-height: 0;
+      aspect-ratio: auto;
       align-self: stretch;
+      margin-top: 18px;
     }
     .fg-entry__photo img { padding: 18px; }
-    /* Body becomes a "contents" wrapper so its children can be placed
-       directly in the entry grid (specifically: title goes into the title
-       grid-area next to rank). */
+
     .fg-entry__body {
-      display: contents;
-    }
-    /* Title teleports out of body into the rank row on mobile */
-    .fg-entry__title {
-      grid-area: title;
-      align-self: baseline;
-      font-size: 18px;
-      margin: 0;
-      min-width: 0;
-      overflow-wrap: anywhere;
-    }
-    /* Other body children fall back to body grid-area */
-    .fg-entry__tags,
-    .fg-entry__meta {
+      grid-area: auto;
       grid-column: 1 / -1;
+      display: block;
+      margin-top: 14px;
     }
-    .fg-entry__tags { margin-bottom: 0; }
-    .fg-entry__meta {
-      margin-top: 8px;
-    }
+    .fg-entry__tags { margin-bottom: 12px; }
+    .fg-entry__meta { margin-top: 0; }
+
     .fg-entry__aside {
-      grid-area: aside;
+      grid-area: auto;
+      grid-column: 1 / -1;
       text-align: left;
       display: block;
       border-top: 1px solid var(--rule);
       padding-top: 16px;
-      margin-top: 4px;
+      margin-top: 18px;
     }
     .fg-entry__shops { max-width: none; margin-left: 0; }
     .fg-entry__shops-label { text-align: left; }
