@@ -786,6 +786,33 @@
     .fg-entry__meta-key { min-width: 80px; }
   }
 
+  /* ============ LOAD MORE ============ */
+  .fg-load-more {
+    display: block;
+    margin: 32px auto;
+    padding: 14px 32px;
+    background: transparent;
+    border: 1px solid var(--ink-soft);
+    border-radius: 3px;
+    font-family: "Montserrat", sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--ink);
+    cursor: pointer;
+    transition: all 0.18s ease;
+  }
+  .fg-load-more:hover {
+    border-color: var(--brand-red);
+    color: var(--brand-red);
+    background: var(--paper-warm);
+  }
+  .fg-load-more__count {
+    font-variant-numeric: tabular-nums;
+    margin: 0 4px;
+  }
+  .fg-load-more[hidden] { display: none; }
+
   /* ============ EMPTY STATE ============ */
   .fg-empty {
     text-align: center;
@@ -903,6 +930,8 @@
     <div class="fg-chips" id="fg-chips"></div>
 
     <div class="fg-entries" id="fg-entries"></div>
+
+    <button type="button" class="fg-load-more" id="fg-load-more" hidden></button>
 
     <div class="fg-empty" id="fg-empty" hidden>
       <p class="fg-empty__title">Под такие фильтры пока ничего не нашлось</p>
@@ -1674,16 +1703,45 @@
     `;
   }
 
+  // ---------- Pagination ----------
+  const PAGE_SIZE = 25;
+  let displayCount = PAGE_SIZE;
+  let lastFilterKey = null;
+
+  function updateLoadMoreButton(filteredTotal) {
+    const btn = $("#fg-load-more");
+    const remaining = filteredTotal - displayCount;
+    if (remaining > 0) {
+      const nextBatch = Math.min(remaining, PAGE_SIZE);
+      btn.innerHTML = `Показать ещё <span class="fg-load-more__count">${nextBatch}</span> ${pluralize(nextBatch, "вино", "вина", "вин")}`;
+      btn.hidden = false;
+    } else {
+      btn.hidden = true;
+    }
+  }
+
   function render() {
     if (!ALL_WINES) return;
     const filtered = ALL_WINES.filter(w => matchesFilters(w, state));
+    // Reset pagination when filter state changes
+    const filterKey = JSON.stringify(state);
+    if (filterKey !== lastFilterKey) {
+      displayCount = PAGE_SIZE;
+      lastFilterKey = filterKey;
+    }
     updateFilterButtons();
     renderChips();
     renderMeta(filtered.length);
-    renderEntries(filtered);
+    renderEntries(filtered.slice(0, displayCount));
+    updateLoadMoreButton(filtered.length);
     updateFilterToggleCount();
     updateHash();
   }
+
+  $("#fg-load-more").addEventListener("click", () => {
+    displayCount += PAGE_SIZE;
+    render();
+  });
 
   window.addEventListener('hashchange', () => {
     if (!RATINGS) return;
@@ -1735,17 +1793,28 @@
 <script>
 /* iframe auto-resize: when this page is embedded in an iframe (e.g. in Tilda),
    notify the parent window of content-height changes so the iframe can be
-   resized to fit content with no scrollbar/padding. */
+   resized to fit content with no scrollbar/padding.
+
+   Measures `.fg-ratings` rather than document.body — that excludes
+   absolutely-positioned children (filter dropdowns, lightbox), so the iframe
+   doesn't grow when a dropdown opens. */
 (function() {
   if (window.parent === window) return; // not embedded — nothing to do
 
+  // Reset body margin so measurement is exact (default UA margin is 8px)
+  document.documentElement.style.margin = "0";
+  document.body.style.margin = "0";
+
+  const target = document.querySelector(".fg-ratings");
+  if (!target) return;
+
   let lastHeight = 0;
-  function postHeight() {
-    const h = Math.max(
-      document.documentElement.scrollHeight,
-      document.body.scrollHeight
-    );
-    if (h !== lastHeight && h > 0) {
+  let scheduled = false;
+
+  function send() {
+    scheduled = false;
+    const h = Math.ceil(target.offsetTop + target.offsetHeight);
+    if (h > 0 && h !== lastHeight) {
       lastHeight = h;
       window.parent.postMessage(
         { type: "fg-ratings-height", height: h },
@@ -1754,24 +1823,30 @@
     }
   }
 
-  // Send initial height once page is fully laid out
-  if (document.readyState === "complete") {
-    postHeight();
-  } else {
-    window.addEventListener("load", postHeight);
+  function schedule() {
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(send);
   }
 
-  // React to content reflows (filter changes, mobile filter expand, etc.)
+  // Watch the namespaced container only — absolute-positioned descendants
+  // (dropdowns, lightbox) won't affect its offsetHeight
   if (typeof ResizeObserver !== "undefined") {
-    new ResizeObserver(() => postHeight()).observe(document.body);
+    new ResizeObserver(schedule).observe(target);
   } else {
-    // Older browsers: poll every 500ms
-    setInterval(postHeight, 500);
+    setInterval(send, 500);
   }
 
-  // Belt-and-suspenders: re-check shortly after any click
-  // (covers dropdowns, filter selections, lightbox close)
-  document.addEventListener("click", () => setTimeout(postHeight, 120));
+  // Initial post once layout settles
+  if (document.readyState === "complete") {
+    schedule();
+  } else {
+    window.addEventListener("load", schedule);
+  }
+
+  // Belt-and-suspenders: re-check after any click — covers transitions,
+  // image loads, and any layout shifts not caught by ResizeObserver
+  document.addEventListener("click", () => setTimeout(schedule, 200));
 })();
 </script>
 
