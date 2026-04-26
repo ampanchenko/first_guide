@@ -1,0 +1,1779 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Винные рейтинги · Первый Гид</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+
+<!--
+========================================================================
+  ВИННЫЕ РЕЙТИНГИ · ПЕРВЫЙ ГИД
+  Self-contained HTML block. Paste into Tilda T123 (HTML) container.
+
+  Чтобы обновить данные:
+    1) Замените содержимое <script id="fg-wines-data"> на свежий JSON
+       (формат: {"ratings": [...названия...], "wines": [...]} )
+    2) Либо поменяйте загрузку на fetch:
+         fetch("/path/to/wines.json").then(r => r.json()).then(init)
+========================================================================
+-->
+
+<style>
+  /* ============ NAMESPACED RESET ============ */
+  .fg-ratings *,
+  .fg-ratings *::before,
+  .fg-ratings *::after {
+    box-sizing: border-box;
+  }
+  .fg-ratings {
+    --ink: #1a1614;
+    --ink-soft: #4a4035;
+    --ink-faint: #7a6f60;
+    --paper: #cac4b0;
+    --paper-warm: #ede7d3;
+    --paper-deep: #ffffff;
+    --rule: #a8a08a;
+    --wine: #b72424;
+    --wine-soft: #cf3a3a;
+    --brand-red: #b72424;
+    --gold: #a57430;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 8px 24px rgba(0, 0, 0, .10);
+
+    font-family: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: var(--ink);
+    background: var(--paper);
+    line-height: 1.55;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "kern", "liga", "calt";
+  }
+  .fg-ratings a { color: inherit; text-decoration: none; }
+  .fg-ratings button {
+    font-family: inherit; font-size: inherit; color: inherit;
+    background: none; border: none; cursor: pointer; padding: 0;
+  }
+
+  /* ============ LAYOUT ============ */
+  .fg-ratings .fg-wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: clamp(32px, 5vw, 72px) clamp(28px, 5vw, 48px) 0;
+  }
+
+  /* ============ FILTER BAR ============ */
+  /* ============ RATING HEADING ============ */
+  .fg-ratings .fg-rating-heading {
+    margin: 0 0 36px 0;
+    position: relative;
+  }
+  .fg-ratings .fg-rating-heading__btn {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    color: var(--ink);
+    font-family: "Montserrat", sans-serif;
+    text-align: left;
+    width: auto;
+    max-width: 100%;
+    transition: color 0.15s ease;
+  }
+  .fg-ratings .fg-rating-heading__btn:hover { color: var(--brand-red); }
+  .fg-ratings .fg-rating-heading__btn:hover .fg-rating-heading__title {
+    text-decoration: underline;
+    text-decoration-color: currentColor;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 8px;
+  }
+  .fg-ratings .fg-rating-heading__label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 500;
+  }
+  .fg-ratings .fg-rating-heading__row {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 18px;
+    max-width: 100%;
+    font-size: 48px;
+    line-height: 1.05;
+  }
+  .fg-ratings .fg-rating-heading__title {
+    font-weight: 600;
+    font-size: inherit;
+    letter-spacing: -0.025em;
+    line-height: inherit;
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .fg-ratings .fg-rating-heading__chevron {
+    font-size: 0.45em;
+    font-weight: 300;
+    color: var(--ink-faint);
+    line-height: 1;
+    transition: transform 0.2s ease;
+    flex: 0 0 auto;
+  }
+  .fg-ratings .fg-rating-heading__btn[aria-expanded="true"] .fg-rating-heading__chevron {
+    transform: rotate(180deg);
+  }
+  @media (max-width: 1100px) {
+    .fg-ratings .fg-rating-heading__row { font-size: 42px; }
+  }
+  @media (max-width: 880px) {
+    .fg-ratings .fg-rating-heading__row { font-size: 40px; }
+    .fg-ratings .fg-rating-heading { margin-bottom: 24px; }
+  }
+  @media (max-width: 480px) {
+    .fg-ratings .fg-rating-heading__row { font-size: 30px; gap: 20px; }
+  }
+
+  /* ============ FILTER BAR ============ */
+  .fg-ratings .fg-filters-toggle {
+    display: none; /* hidden on desktop, shown on mobile */
+  }
+  .fg-filters {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    padding: 14px;
+    background: var(--paper-warm);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    position: relative;
+  }
+  @media (max-width: 1100px) {
+    .fg-filters {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 880px) {
+    /* show toggle button */
+    .fg-ratings .fg-filters-toggle {
+      display: block;
+      width: 100%;
+      background: var(--paper-warm);
+      border: 1px solid var(--rule);
+      border-radius: 4px;
+      padding: 14px 16px;
+      text-align: left;
+      cursor: pointer;
+      font-family: "Montserrat", sans-serif;
+      color: var(--ink);
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+    .fg-ratings .fg-filters-toggle:hover {
+      border-color: var(--ink-faint);
+    }
+    .fg-ratings .fg-filters-toggle__row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+    }
+    .fg-ratings .fg-filters-toggle__text {
+      flex: 0 0 auto;
+    }
+    .fg-ratings .fg-filters-toggle__count {
+      flex: 0 0 auto;
+      color: var(--brand-red);
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .fg-ratings .fg-filters-toggle__chevron {
+      margin-left: auto;
+      font-size: 18px;
+      color: var(--ink-faint);
+      line-height: 1;
+      transition: transform 0.2s ease;
+    }
+    .fg-ratings .fg-filters-toggle[aria-expanded="true"] .fg-filters-toggle__chevron {
+      transform: rotate(180deg);
+    }
+    .fg-ratings .fg-filters-toggle__list {
+      display: block;
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--ink-faint);
+      line-height: 1.5;
+      letter-spacing: 0.02em;
+    }
+    .fg-ratings .fg-filters-toggle[aria-expanded="true"] .fg-filters-toggle__list {
+      display: none;
+    }
+    /* collapse filters when section is closed */
+    .fg-ratings .fg-filters-section[data-expanded="false"] .fg-filters {
+      display: none;
+    }
+    .fg-ratings .fg-filters-section[data-expanded="true"] .fg-filters {
+      margin-top: 8px;
+    }
+    .fg-filters {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 480px) {
+    .fg-filters {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .fg-filter {
+    position: relative;
+  }
+  .fg-filter__btn {
+    width: 100%;
+    background: var(--paper-deep);
+    border: 1px solid var(--rule);
+    padding: 12px 36px 12px 14px;
+    text-align: left;
+    border-radius: 3px;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    position: relative;
+    display: block;
+    font-size: 14px;
+    line-height: 1.3;
+    color: var(--ink);
+  }
+  .fg-filter__btn:hover {
+    border-color: var(--ink-soft);
+  }
+  .fg-filter__btn[aria-expanded="true"] {
+    border-color: var(--brand-red);
+    box-shadow: 0 0 0 3px rgba(183, 36, 36, 0.18);
+  }
+  .fg-filter__btn::after {
+    content: "";
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    width: 8px;
+    height: 8px;
+    border-right: 1.5px solid var(--ink-soft);
+    border-bottom: 1.5px solid var(--ink-soft);
+    transform: translateY(-70%) rotate(45deg);
+    transition: transform 0.18s ease;
+  }
+  .fg-filter__btn[aria-expanded="true"]::after {
+    transform: translateY(-30%) rotate(-135deg);
+  }
+  .fg-filter__label {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 500;
+    margin-bottom: 3px;
+  }
+  .fg-filter__value {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .fg-filter__value--placeholder {
+    color: var(--ink-faint);
+    font-weight: 400;
+    font-style: italic;
+  }
+
+  /* Dropdown panel */
+  .fg-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: var(--paper-deep);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    box-shadow: var(--shadow);
+    z-index: 30;
+    display: none;
+    overflow: hidden;
+  }
+  .fg-dropdown.is-open { display: block; }
+  .fg-dropdown__search {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--paper-warm);
+    position: relative;
+    z-index: 2;
+  }
+  .fg-dropdown__search input {
+    width: 100%;
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    padding: 8px 10px;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--ink);
+    border-radius: 3px;
+    outline: none;
+  }
+  .fg-dropdown__search input:focus {
+    border-color: var(--brand-red);
+  }
+  .fg-dropdown__list {
+    max-height: min(60vh, 460px);
+    overflow-y: auto;
+    padding: 4px 0;
+    -webkit-overflow-scrolling: touch;
+  }
+  .fg-dropdown__item {
+    width: 100%;
+    text-align: left;
+    padding: 14px 36px;
+    font-size: 15px;
+    line-height: 1.4;
+    cursor: pointer;
+    transition: background 0.12s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    color: var(--ink);
+    border-bottom: 1px solid rgba(0,0,0,0.12);
+  }
+  .fg-dropdown__item:last-child { border-bottom: none; }
+  .fg-dropdown__item:hover { background: var(--paper-warm); }
+  .fg-dropdown__item.is-active {
+    background: var(--paper);
+    color: var(--brand-red);
+    font-weight: 600;
+  }
+  .fg-dropdown__item-count {
+    font-size: 11px;
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+  }
+  .fg-dropdown__empty {
+    padding: 20px 14px;
+    color: var(--ink-faint);
+    font-style: italic;
+    text-align: center;
+    font-size: 13px;
+  }
+
+  /* ============ RESULT META ============ */
+  .fg-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin: 28px 0 12px;
+  }
+  .fg-meta__count {
+    font-family: "Montserrat", sans-serif;
+    font-size: 14px;
+    color: var(--ink-soft);
+    font-style: italic;
+    font-weight: 300;
+    line-height: 1.3;
+    letter-spacing: 0.02em;
+  }
+  .fg-meta__count strong {
+    font-weight: 500;
+    font-style: normal;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+    font-size: 16px;
+    margin-right: 4px;
+  }
+  .fg-meta__reset {
+    font-family: "Montserrat", sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    color: var(--brand-red);
+    border-bottom: 1px solid currentColor;
+    padding-bottom: 1px;
+    transition: opacity 0.18s ease;
+  }
+  .fg-meta__reset:hover { opacity: 0.7; }
+  .fg-meta__reset[hidden] { display: none; }
+
+  /* Active filter chips */
+  .fg-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 6px 0 0;
+  }
+  .fg-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 5px 8px 5px 12px;
+    border-radius: 100px;
+    font-size: 12px;
+    line-height: 1.2;
+    font-weight: 400;
+  }
+  .fg-chip__close {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    color: var(--paper);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease;
+    font-size: 14px;
+    line-height: 1;
+  }
+  .fg-chip__close:hover { background: rgba(255,255,255,0.3); }
+
+  /* ============ ENTRIES ============ */
+  .fg-entries {
+    margin-top: 12px;
+  }
+  .fg-entry {
+    display: grid;
+    grid-template-columns: 80px 220px 1fr auto;
+    gap: 28px;
+    align-items: stretch;
+    padding: 32px 0;
+    min-height: 300px;
+    border-top: 1px solid var(--rule);
+    transition: opacity 0.2s ease;
+  }
+  .fg-entry:last-child { border-bottom: 1px solid var(--rule); }
+
+  /* ranking number */
+  .fg-entry__rank {
+    font-family: "Montserrat", sans-serif;
+    font-weight: 300;
+    font-size: 64px;
+    line-height: 0.9;
+    color: var(--wine);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.04em;
+    text-align: center;
+    padding-top: 4px;
+    position: relative;
+  }
+  .fg-entry__rank::after {
+    content: "";
+    display: block;
+    width: 24px;
+    height: 1px;
+    background: var(--rule);
+    margin: 8px auto 0;
+  }
+  .fg-entry__rank-context {
+    font-family: "Montserrat", sans-serif;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 500;
+    margin-top: 6px;
+    line-height: 1.3;
+    display: block;
+  }
+  /* In mixed mode (multiple ratings showing), render compact version */
+  .fg-entries.is-mixed .fg-entry__rank { font-size: 36px; }
+  .fg-entries.is-mixed .fg-entry__rank::after { width: 18px; margin-top: 4px; }
+
+  /* photo */
+  .fg-entry__photo {
+    background: #ffffff;
+    border: 1px solid var(--rule);
+    width: 100%;
+    aspect-ratio: 1;
+    align-self: start;
+    overflow: hidden;
+    border-radius: 2px;
+    position: relative;
+    cursor: zoom-in;
+  }
+  .fg-entry__photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 14px;
+    transition: transform 0.4s ease;
+  }
+  .fg-entry:hover .fg-entry__photo img { transform: scale(1.04); }
+
+  /* lightbox */
+  .fg-lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 18, 14, 0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    padding: clamp(20px, 4vw, 48px);
+    cursor: zoom-out;
+    animation: fg-lightbox-fade 0.18s ease;
+  }
+  @keyframes fg-lightbox-fade { from { opacity: 0; } to { opacity: 1; } }
+  .fg-lightbox__img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    background: #ffffff;
+    border-radius: 2px;
+    padding: 24px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+    cursor: default;
+  }
+  .fg-lightbox__close {
+    position: absolute;
+    top: clamp(16px, 3vw, 32px);
+    right: clamp(16px, 3vw, 32px);
+    width: 44px;
+    height: 44px;
+    border: none;
+    background: rgba(255,255,255,0.12);
+    color: #ffffff;
+    border-radius: 50%;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Montserrat", sans-serif;
+    font-weight: 300;
+    transition: background 0.15s ease;
+  }
+  .fg-lightbox__close:hover { background: rgba(255,255,255,0.22); }
+  .fg-lightbox__caption {
+    position: absolute;
+    bottom: clamp(20px, 3vw, 32px);
+    left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255,255,255,0.75);
+    font-family: "Montserrat", sans-serif;
+    font-size: 13px;
+    text-align: center;
+    max-width: 80vw;
+    pointer-events: none;
+  }
+
+  /* main info */
+  .fg-entry__body { min-width: 0; }
+  .fg-entry__brand {
+    font-family: "Montserrat", sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 500;
+    margin: 0 0 4px;
+  }
+  .fg-entry__title {
+    font-family: "Montserrat", sans-serif;
+    font-weight: 600;
+    font-size: 22px;
+    line-height: 1.25;
+    margin: 0 0 14px;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .fg-entry__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .fg-entry__tag {
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--ink-soft);
+    background: var(--paper-warm);
+    border: 1px solid var(--rule);
+    padding: 3px 8px;
+    border-radius: 2px;
+    font-weight: 400;
+    line-height: 1.4;
+  }
+  .fg-entry__meta {
+    font-size: 13px;
+    color: var(--ink-soft);
+    line-height: 1.6;
+    margin: 0;
+  }
+  .fg-entry__meta-row {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+  }
+  .fg-entry__meta-key {
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 500;
+    min-width: 92px;
+    flex-shrink: 0;
+    padding-top: 2px;
+  }
+  .fg-entry__meta-val {
+    font-size: 13.5px;
+    color: var(--ink);
+    flex: 1;
+  }
+  .fg-entry__grape-link {
+    cursor: pointer;
+    transition: color 0.15s ease;
+    border-bottom: 1px dotted transparent;
+  }
+  .fg-entry__grape-link:hover {
+    color: var(--wine);
+    border-bottom-color: var(--wine);
+  }
+
+  /* right column: price + buy */
+  .fg-entry__aside {
+    text-align: right;
+    min-width: 180px;
+  }
+  .fg-entry__price {
+    font-family: "Montserrat", sans-serif;
+    font-size: 26px;
+    font-weight: 500;
+    color: var(--ink);
+    margin-bottom: 4px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .fg-entry__price-note {
+    font-family: "Montserrat", sans-serif;
+    font-style: italic;
+    font-size: 12px;
+    color: var(--ink-faint);
+    margin-bottom: 16px;
+    font-weight: 300;
+  }
+  .fg-entry__shops {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: stretch;
+    max-width: 220px;
+    margin-left: auto;
+  }
+  .fg-entry__shops-label {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 500;
+    text-align: right;
+    margin-bottom: 2px;
+  }
+  .fg-shop {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border: 1px solid var(--rule);
+    background: var(--paper-deep);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink);
+    border-radius: 2px;
+    transition: all 0.18s ease;
+    text-align: left;
+  }
+  .fg-shop:hover {
+    border-color: var(--brand-red);
+    color: var(--brand-red);
+    background: var(--paper-warm);
+  }
+  .fg-shop::after {
+    content: "→";
+    font-size: 14px;
+    color: var(--ink-faint);
+    transition: transform 0.18s ease, color 0.18s ease;
+  }
+  .fg-shop:hover::after {
+    transform: translateX(3px);
+    color: var(--brand-red);
+  }
+  .fg-entry__no-shops {
+    font-size: 12px;
+    color: var(--ink-faint);
+    font-style: italic;
+    text-align: right;
+  }
+
+  /* Mobile: stack the entry */
+  @media (max-width: 880px) {
+    .fg-entry {
+      grid-template-columns: 1fr;
+      grid-template-areas:
+        "rank"
+        "photo"
+        "body"
+        "aside";
+      gap: 14px;
+      padding: 28px 0;
+      border-top: none;
+    }
+    .fg-entries .fg-entry:first-child { padding-top: 8px; }
+    .fg-entry__rank {
+      grid-area: rank;
+      font-size: 44px;
+      padding-top: 0;
+      text-align: left;
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+    }
+    .fg-entry__rank::after {
+      flex: 1;
+      margin: 0 0 12px 0;
+    }
+    .fg-entries.is-mixed .fg-entry__rank { font-size: 32px; }
+    .fg-entry__rank-context {
+      margin-top: 0;
+      align-self: center;
+    }
+    .fg-entry__photo {
+      grid-area: photo;
+      width: 100%;
+      max-width: none;
+      height: 360px;
+      min-height: 0;
+      align-self: stretch;
+    }
+    .fg-entry__photo img { padding: 18px; }
+    .fg-entry__body { grid-area: body; min-width: 0; }
+    .fg-entry__aside {
+      grid-area: aside;
+      text-align: left;
+      border-top: 1px solid var(--rule);
+      padding-top: 16px;
+      margin-top: 4px;
+    }
+    .fg-entry__shops { max-width: none; margin-left: 0; }
+    .fg-entry__shops-label { text-align: left; }
+    .fg-entry__no-shops { text-align: left; }
+    .fg-entry__title { font-size: 20px; }
+    .fg-entry__price { font-size: 22px; }
+    .fg-entry__meta-key { min-width: 80px; }
+  }
+
+  /* ============ EMPTY STATE ============ */
+  .fg-empty {
+    text-align: center;
+    padding: 80px 20px;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    margin-top: 12px;
+  }
+  .fg-empty__title {
+    font-family: "Montserrat", sans-serif;
+    font-style: italic;
+    font-size: 22px;
+    font-weight: 400;
+    color: var(--ink-soft);
+    margin: 0 0 8px;
+  }
+  .fg-empty__sub {
+    font-size: 14px;
+    color: var(--ink-faint);
+    margin: 0 0 20px;
+  }
+
+  /* ============ FOCUS / A11Y ============ */
+  .fg-ratings :focus-visible {
+    outline: 2px solid var(--wine);
+    outline-offset: 2px;
+  }
+
+  /* prevent body scroll-lock from interfering */
+  .fg-ratings {
+    isolation: isolate;
+  }
+</style>
+</head>
+<body>
+
+<div class="fg-ratings">
+  <div class="fg-wrap">
+
+    <div class="fg-rating-heading fg-filter" data-filter="rating">
+      <button class="fg-filter__btn fg-rating-heading__btn" type="button" aria-haspopup="listbox" aria-expanded="false">
+        <span class="fg-rating-heading__label">Выбрать рейтинг</span>
+        <span class="fg-rating-heading__row">
+          <span class="fg-filter__value fg-rating-heading__title">—</span>
+          <span class="fg-rating-heading__chevron" aria-hidden="true">⌄</span>
+        </span>
+      </button>
+    </div>
+
+    <div class="fg-filters-section" data-expanded="false">
+      <button class="fg-filters-toggle" type="button" aria-expanded="false" aria-controls="fg-filters">
+        <span class="fg-filters-toggle__row">
+          <span class="fg-filters-toggle__text">Показать фильтры</span>
+          <span class="fg-filters-toggle__count" id="fg-filters-toggle-count" hidden></span>
+          <span class="fg-filters-toggle__chevron" aria-hidden="true">⌄</span>
+        </span>
+        <span class="fg-filters-toggle__list">Цвет · Тип · Сахар · Виноград · Регион · Год · Бренд · Цена</span>
+      </button>
+      <div class="fg-filters" id="fg-filters" role="region" aria-label="Фильтры">
+        <div class="fg-filter" data-filter="color">
+        <button class="fg-filter__btn" type="button" aria-haspopup="listbox" aria-expanded="false">
+          <span class="fg-filter__label">Цвет</span>
+          <span class="fg-filter__value fg-filter__value--placeholder">любой цвет</span>
+        </button>
+      </div>
+      <div class="fg-filter" data-filter="type">
+        <button class="fg-filter__btn" type="button" aria-haspopup="listbox" aria-expanded="false">
+          <span class="fg-filter__label">Тип</span>
+          <span class="fg-filter__value fg-filter__value--placeholder">любой тип</span>
+        </button>
+      </div>
+      <div class="fg-filter" data-filter="sugar">
+        <button class="fg-filter__btn" type="button" aria-haspopup="listbox" aria-expanded="false">
+          <span class="fg-filter__label">Сахар</span>
+          <span class="fg-filter__value fg-filter__value--placeholder">любой сахар</span>
+        </button>
+      </div>
+      <div class="fg-filter" data-filter="grape">
+        <button class="fg-filter__btn" type="button" aria-haspopup="listbox" aria-expanded="false">
+          <span class="fg-filter__label">Виноград</span>
+          <span class="fg-filter__value fg-filter__value--placeholder">все сорта</span>
+        </button>
+      </div>
+      <div class="fg-filter" data-filter="region">
+        <button class="fg-filter__btn" type="button" aria-haspopup="listbox" aria-expanded="false">
+          <span class="fg-filter__label">Регион</span>
+          <span class="fg-filter__value fg-filter__value--placeholder">любой регион</span>
+        </button>
+      </div>
+      <div class="fg-filter" data-filter="vintage">
+        <button class="fg-filter__btn" type="button" aria-haspopup="listbox" aria-expanded="false">
+          <span class="fg-filter__label">Год</span>
+          <span class="fg-filter__value fg-filter__value--placeholder">любой год</span>
+        </button>
+      </div>
+      <div class="fg-filter" data-filter="brand">
+        <button class="fg-filter__btn" type="button" aria-haspopup="listbox" aria-expanded="false">
+          <span class="fg-filter__label">Бренд</span>
+          <span class="fg-filter__value fg-filter__value--placeholder">все бренды</span>
+        </button>
+      </div>
+      <div class="fg-filter" data-filter="price">
+        <button class="fg-filter__btn" type="button" aria-haspopup="listbox" aria-expanded="false">
+          <span class="fg-filter__label">Цена</span>
+          <span class="fg-filter__value fg-filter__value--placeholder">любая цена</span>
+        </button>
+      </div>
+    </div>
+    </div>
+
+    <div class="fg-meta">
+      <p class="fg-meta__count" id="fg-count">—</p>
+      <button type="button" class="fg-meta__reset" id="fg-reset" hidden>Сбросить фильтры</button>
+    </div>
+    <div class="fg-chips" id="fg-chips"></div>
+
+    <div class="fg-entries" id="fg-entries"></div>
+
+    <div class="fg-empty" id="fg-empty" hidden>
+      <p class="fg-empty__title">Под такие фильтры пока ничего не нашлось</p>
+      <p class="fg-empty__sub">Попробуйте ослабить условия — снимите фильтр по сорту или году.</p>
+    </div>
+
+  </div>
+</div>
+
+<script id="fg-wines-data" type="application/json">{"ratings":["Шардоне 03'26","Недорогие романтические 02'26","Игристые 12'25","Красностопы 11'25","Совиньон Бланы 09'25","Вина для лета '25","Рислинги 04'25","Недорогие романтические 02'25","Игристые 12'24","Пино Нуары 11'24","Оранжевые 09'24","Шардоне 07'24","Петнаты 05'24","Дачные красные 04'24","Тихие розовые 02'24","Игристые розовые 02'24","Игристые 12'23"],"wines":[{"title":"LeGato Шардоне 2023","brand":"LeGato","producer":"LeGato Wine","vintage":"2023","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Крымск","grapes":["Шардоне"],"rating":"Шардоне 03'26","rank":1,"photo":"https://static.tildacdn.com/stor3735-6365-4239-b164-653965323733/ee15656ad0ba9b647b31501cadfbbb01.png","price":4850,"shop_links":[{"name":"Vino.ru","url":"https://vino.ru/avtorskoe-vino/sk-bereg-rv-s-zgu-kuban-sukhoe-beloe-legato-shardone-0-75-2023/"}],"landing_url":"https://firstguide.ru/legato-hardonnay-2023"},{"title":"Фанагория 100 Оттенков Белого Шардоне 2023","brand":"Fanagoria","producer":"ООО АПФ «Фанагория»","vintage":"2023","color":"Белое","sugar":"Сухое","type":"Тихое","method":"Выдержанное","region":"Кубань. Таманский полуостров","grapes":["Шардоне"],"rating":"Шардоне 03'26","rank":2,"photo":"https://static.tildacdn.com/stor3463-6631-4330-a265-363432363661/37a06f70d7f548e876e805073bc2cd31.jpg","price":2270,"shop_links":[{"name":"Decanter","url":"https://decanter.ru/product/fanagoria-100-shades-of-white-chardonnay-fanagorii-id255575"}],"landing_url":"https://firstguide.ru/fanagoriya-100-ottenkov-belogo-shardone-2023"},{"title":"Галицкий и Галицкий Красная Горка Шардоне 2021","brand":"Галицкий и Галицкий","producer":"ООО «Галицкий и Галицкий»","vintage":"2021","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Семигорье","grapes":["Шардоне"],"rating":"Шардоне 03'26","rank":3,"photo":"https://static.tildacdn.com/stor6439-3739-4530-b136-626562313836/456ae7db2a0e484114bfc922623e710b.webp","price":4190,"shop_links":[{"name":"SimpleWine","url":"https://simplewine.ru/catalog/product/shardone_krasnaya_gorka_075_152362"}],"landing_url":"https://firstguide.ru/galickij-i-galickij-krasnaya-gorka-shardone-2021"},{"title":"Усадьба Маскага Соло Шардоне 2024","brand":"Усадьба Маскага","producer":"УТОЧНИТЬ","vintage":"2024","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Анапа","grapes":["Шардоне"],"rating":"Шардоне 03'26","rank":4,"photo":"https://static.tildacdn.com/stor3038-3264-4561-b536-326433383735/7b6345cff2d5ecdfd09ad11b5a5c49e4.webp","price":1420,"shop_links":[{"name":"WineStyle","url":"https://winestyle.ru/products/Usadba-Maskaga-Solo-Chardonnay-2024.html"}],"landing_url":"https://firstguide.ru/usadba-maskaga-solo-shardone-2024"},{"title":"Усадьба Маркотх Шардоне 2024","brand":"Усадьба Маркотх","producer":"Усадьба Маркотх (Алексей Толстой)","vintage":"2024","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Геленджик","grapes":["Шардоне"],"rating":"Шардоне 03'26","rank":5,"photo":"https://static.tildacdn.com/stor6335-6239-4430-a466-626531616465/3f0f995eb7b708fbb8fa538c012f3f3c.jpg","price":2490,"shop_links":[{"name":"SimpleWine","url":"https://simplewine.ru/catalog/product/chardonnay_2023_075_151986/"}],"landing_url":"https://firstguide.ru/usadba-markotkh-shardone-2024"},{"title":"One Barrel By Dmitry Maslov Chardonnay 2024","brand":"OBDM","producer":"ООО «Винодельня Манкопия»","vintage":"2024","color":"Белое","sugar":"Сухое","type":"Тихое","method":"Сюр Ли","region":"Крым. Бахчисарай","grapes":["Шардоне"],"rating":"Шардоне 03'26","rank":6,"photo":"https://static.tildacdn.com/stor6236-6534-4762-a461-333962653036/4e0515e0369f301f0d1a37082538bf8b.png","price":5460,"shop_links":[{"name":"Vino.ru","url":"https://vino.ru/avtorskoe-vino/mankopiya-vino-sukhoe-beloe-shardone-obdm-0-75-2024/"}],"landing_url":"https://firstguide.ru/one-barrel-by-dmitry-maslov-chardonnay-2024"},{"title":"Esse Chardonnay Satera 2021","brand":"Esse","producer":"ООО «Сатера»","vintage":"2021","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Крым. Бахчисарай","grapes":["Шардоне"],"rating":"Шардоне 03'26","rank":7,"photo":"https://static.tildacdn.com/stor3533-3434-4565-b264-366339663865/ce1fcddd0cb2d1cc12b72cc3f2640354.webp","price":1990,"shop_links":[{"name":"Vino.ru","url":"https://vino.ru/avtorskoe-vino/sk-bereg-rv-s-zgu-kuban-sukhoe-beloe-legato-shardone-0-75-2023/"}],"landing_url":"https://firstguide.ru/esse-chardonnay-satera-2021"},{"title":"Галицкий и Галицкий Красная Горка Шардоне Акация 2023","brand":"Галицкий и Галицкий","producer":"ООО «Галицкий и Галицкий»","vintage":"2023","color":"Белое","sugar":"Сухое","type":"Тихое","method":"Выдержанное","region":"Кубань. Семигорье","grapes":["Шардоне"],"rating":"Шардоне 03'26","rank":8,"photo":"https://static.tildacdn.com/stor6666-6234-4566-b630-336332656430/52198ca1bc2f03fe4b36a377a56dc296.webp","price":7190,"shop_links":[{"name":"SimpleWine","url":"https://simplewine.ru/catalog/product/shardone_krasnaya_gorka_akatsiya_2023_075_160038/"}],"landing_url":"https://firstguide.ru/galickij-i-galickij-krasnaya-gorka-shardone-akaciya-2023"},{"title":"Узунов Шардоне Резерв 2023","brand":"Узунов","producer":"КФХ Узунова Я.А.","vintage":"2023","color":"Белое","sugar":"Сухое","type":"Тихое","method":"Резерв","region":"Кубань. Анапа","grapes":["Шардоне"],"rating":"Шардоне 03'26","rank":9,"photo":"https://static.tildacdn.com/stor6562-3138-4530-b361-306233656235/3ef93a9e946b0346b7f9d4109865256f.jpg","price":7110,"shop_links":[{"name":"Fortwine","url":"https://fortwine.ru/product/vino-winery-uzunov-chardonnay-reserv-2023-0-75/"}],"landing_url":"https://firstguide.ru/uzunov-shardone-rezerv-2023"},{"title":"Фанагория Декантер Шардоне 2020","brand":"Fanagoria","producer":"ООО АПФ «Фанагория»","vintage":"2020","color":"Белое","sugar":"Сухое","type":"Тихое","method":"Коллекционное","region":"Кубань. Таманский полуостров","grapes":["Шардоне"],"rating":"Шардоне 03'26","rank":10,"photo":"https://static.tildacdn.com/stor6236-3938-4635-b634-366139323230/3aa6a31f78c1de8c825b88ea8b95d661.webp","price":3920,"shop_links":[{"name":"WineStyle","url":"https://winestyle.ru/products/Fanagoria-Decanter-Chardonnay-Collection-2020.html"}],"landing_url":"https://firstguide.ru/fanagoriya-dekanter-shardone-2020"},{"title":"Di Caspico Каберне Совиньон","brand":"Di Caspico","producer":"Дербентская ВК","vintage":"NV","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Дагестан. Дербент","grapes":["Каберне совиньон"],"rating":"Недорогие романтические 02'26","rank":1,"photo":"https://static.tildacdn.com/stor3534-6239-4566-b432-306332353435/5feb1352bd692a1ae56d10c4a2d98ec3.jpg","price":500,"shop_links":[{"name":"Лента","url":"https://lenta.com/"}],"landing_url":"https://firstguide.ru/di-caspico-kaberne-sovinon"},{"title":"Chateau Tamagne GlouGlouMour Цвайгельт","brand":"Chateau Tamagne","producer":"ООО «Кубань-Вино»","vintage":"NV","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Таманский полуостров","grapes":["Цвайгельт таманский"],"rating":"Недорогие романтические 02'26","rank":2,"photo":"https://static.tildacdn.com/stor3333-3762-4130-a338-623137643463/a82c87ceb1ee71dc6c35228b92251c2a.jpg","price":500,"shop_links":[{"name":"ВинЛаб","url":"https://www.winelab.ru"}],"landing_url":"https://firstguide.ru/chateau-tamagne-gluglumur-tsvaigelt"},{"title":"Ведерниковъ Красностоп Золотовский","brand":"Ведерниковъ","producer":"ООО «Винодельня Ведерниковъ»","vintage":"NV","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Долина Дона. Усть-Донецкий","grapes":["Красностоп золотовский"],"rating":"Недорогие романтические 02'26","rank":3,"photo":"https://static.tildacdn.com/stor6232-3162-4636-b166-633866383735/4f489be53ea95eb4a60e4b0f144a05ad.jpg","price":1349,"shop_links":[{"name":"Перекресток","url":"https://www.perekrestok.ru/"}],"landing_url":"https://firstguide.ru/vedernikov-krasnostop-zolotovskiy"},{"title":"Golubitskoe Estate Chardonnay","brand":"Golubitskoe Estate","producer":"ООО «Поместье Голубицкое»","vintage":"NV","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Таманский полуостров","grapes":["Шардоне"],"rating":"Недорогие романтические 02'26","rank":4,"photo":"https://static.tildacdn.com/stor3532-3435-4934-b363-363934643932/3cbe5b50bbe99b0decb9aa719e323a81.jpg","price":1000,"shop_links":[{"name":"Пятерочка","url":"https://5ka.ru"}],"landing_url":""},{"title":"ESSE Каберне Отборное","brand":"Esse","producer":"ООО «Сатера»","vintage":"NV","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Крым. Бахчисарай","grapes":["Каберне совиньон","Каберне фран"],"rating":"Недорогие романтические 02'26","rank":5,"photo":"https://static.tildacdn.com/stor3662-6332-4231-b834-363134393263/a7cd2a9e0f459b13495442704c4699e6.jpg","price":800,"shop_links":[{"name":"Перекресток","url":"https://www.perekrestok.ru/"}],"landing_url":"https://firstguide.ru/esse-kaberne-otbornoe"},{"title":"Chateau Pinot Pinot Noir","brand":"Chateau Pinot","producer":"ООО «Шато Пино»","vintage":"NV","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Геленджик","grapes":["Пино нуар"],"rating":"Недорогие романтические 02'26","rank":6,"photo":"https://static.tildacdn.com/stor6438-3436-4938-b331-616331363437/096228f6d973fe1bc5d28ec5c5f671b9.jpg","price":1199,"shop_links":[{"name":"Перекресток","url":"https://www.perekrestok.ru/"}],"landing_url":""},{"title":"ZB Wine Rose","brand":"ZB Wine","producer":"АО «Агрофирма Золотая Балка»","vintage":"NV","color":"Розовое","sugar":"Сухое","type":"Тихое","method":"","region":"Севастополь. Балаклава","grapes":["Каберне совиньон","Мерло","Пино блан","Пино гри"],"rating":"Недорогие романтические 02'26","rank":7,"photo":"https://static.tildacdn.com/stor3738-3862-4334-a165-353934656564/eafeac5095fe33415088c85ac877a2b2.jpg","price":780,"shop_links":[{"name":"Перекресток","url":"https://www.perekrestok.ru/"}],"landing_url":""},{"title":"Коктебель Pinot Grigio Blush","brand":"Коктебель","producer":"Коктебель","vintage":"NV","color":"Розовое","sugar":"Сухое","type":"Тихое","method":"","region":"Крым. Феодосия","grapes":["Пино гри"],"rating":"Недорогие романтические 02'26","rank":8,"photo":"https://static.tildacdn.com/stor3031-6531-4434-b335-316163313066/4ce6197c8ff126463a0363b78bebc3a2.jpg","price":800,"shop_links":[{"name":"Перекресток","url":"https://www.perekrestok.ru/"}],"landing_url":"https://firstguide.ru/pinot-grigio-blush"},{"title":"Chateau Tamagne Signature Шардоне","brand":"Chateau Tamagne","producer":"ООО «Кубань-Вино»","vintage":"NV","color":"Белое","sugar":"Экстра Брют","type":"Тихое","method":"","region":"Кубань. Таманский полуостров","grapes":["Шардоне"],"rating":"Недорогие романтические 02'26","rank":9,"photo":"https://static.tildacdn.com/stor3633-6332-4838-b033-633236613638/a52521e6fb940ce07dac4a0550d5bba8.jpg","price":960,"shop_links":[{"name":"Перекресток","url":"https://www.perekrestok.ru/"}],"landing_url":"https://firstguide.ru/chateau-tamagne-signature-shardone"},{"title":"Фанагория NR Саперави","brand":"NR","producer":"ООО АПФ «Фанагория»","vintage":"NV","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Таманский полуостров","grapes":["Саперави"],"rating":"Недорогие романтические 02'26","rank":10,"photo":"https://static.tildacdn.com/stor3933-3661-4134-a163-366331393561/2b3084d07f6c56d3c295b6bf2d9cd90b.jpg","price":400,"shop_links":[{"name":"Магнит","url":"https://magnit.ru/"}],"landing_url":"https://firstguide.ru/fanagoria-nr-saperavi"},{"title":"Mantra Estate Blanc de Blancs 2020","brand":"Mantra Estate","producer":"Mantra Estate","vintage":"2020","color":"Белое","sugar":"Брют","type":"Игристое","method":"","region":"Кубань. Крымск","grapes":["Шардоне"],"rating":"Игристые 12'25","rank":1,"photo":"https://static.tildacdn.com/stor6533-3866-4562-b865-373936306137/466f76eebe63c84d8e42ad7aa018c218.jpg","price":10000,"shop_links":[],"landing_url":"https://firstguide.ru/mantra-estate-blanc-de-blancs-2020"},{"title":"Esse Экстра Брют белое 2021","brand":"Esse","producer":"ООО «Сатера»","vintage":"2021","color":"Белое","sugar":"Экстра Брют","type":"Игристое","method":"","region":"Крым. Бахчисарай","grapes":["Шардоне"],"rating":"Игристые 12'25","rank":2,"photo":"https://static.tildacdn.com/stor3737-3962-4835-a334-383038633036/912710ef4b03d6b74c7711ada48db48c.jpg","price":2990,"shop_links":[{"name":"WineShopper","url":"https://wine-shopper.ru/esse-grande-cuvee-extra-brut-0-75l"}],"landing_url":"https://firstguide.ru/esse-ekstra-bryut-beloe-2021"},{"title":"Абрау-Дюрсо Victor Dravigny Экстра брют","brand":"Абрау-Дюрсо","producer":"ООО «Абрау-Дюрсо»","vintage":"NV","color":"Белое","sugar":"Брют","type":"Игристое","method":"","region":"Кубань. Семигорье","grapes":["Рислинг","Шардоне","Пино блан"],"rating":"Игристые 12'25","rank":3,"photo":"https://static.tildacdn.com/stor6136-3965-4563-b638-613764396662/e59f047c9ea83c5fbd6b0a60ec41aa2a.jpg","price":1250,"shop_links":[{"name":"Luding","url":"https://luding.ru/collection/item/victor-dravigny-extra-brut-abrau-durso--39485/"}],"landing_url":"https://firstguide.ru/abrau-dyurso-victor-dravigny-brut"},{"title":"Новый Свет Коллекционное Шардоне Brut 2019","brand":"Новый Свет","producer":"Новый Свет","vintage":"2019","color":"Белое","sugar":"Брют","type":"Игристое","method":"","region":"Крым. Судак","grapes":["Шардоне"],"rating":"Игристые 12'25","rank":4,"photo":"https://static.tildacdn.com/stor3365-6132-4638-a162-653139663934/8ba15d831eb6b5ee1970f3ab3d5f3fdf.jpg","price":3290,"shop_links":[{"name":"WineStyle","url":"https://winestyle.ru/products/Novy-Svet-Chardonnay-Brut.html"}],"landing_url":"https://firstguide.ru/novyi-svet-kollektsionnoe-shardone-brut-2019"},{"title":"Поместье Голубицкое Tête de Cheval Brut 2022","brand":"Поместье Голубицкое","producer":"ООО «Поместье Голубицкое»","vintage":"2022","color":"Белое","sugar":"Брют","type":"Игристое","method":"","region":"Кубань. Таманский полуостров","grapes":["Рислинг","Шардоне","Пино гри","Совиньон блан"],"rating":"Игристые 12'25","rank":5,"photo":"https://static.tildacdn.com/stor3633-3533-4761-b032-313763323632/54cf657015c740d8a6062e2fc8beb3d1.jpg","price":1118,"shop_links":[{"name":"MBG Wine","url":"https://mbg-store.ru/wine/18776/blan-de-blan-tz-usadba-perovskikh"},{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/igristye-vina/usadba-perovskih-blan-de-blan-ekstra-bryut-beloe-igristoe-vino-0-75-l/"},{"name":"WineStyle","url":"https://winestyle.ru/products/Usadba-Perovskih-Brut-Blanc-De-Blancs-2021.html"}],"landing_url":""},{"title":"Абрау-Дюрсо Brut d'Or Riesling 2021","brand":"Абрау-Дюрсо","producer":"ООО «Абрау-Дюрсо»","vintage":"2021","color":"Белое","sugar":"Брют","type":"Игристое","method":"","region":"Кубань. Семигорье","grapes":["Рислинг"],"rating":"Игристые 12'25","rank":6,"photo":"https://static.tildacdn.com/stor3937-6362-4530-b865-323066346361/4b04eb0841edac6175e5ebcc06cdd566.jpg","price":2250,"shop_links":[{"name":"MBG Wine","url":"https://mbg-store.ru/wine/18776/blan-de-blan-tz-usadba-perovskikh"},{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/igristye-vina/usadba-perovskih-blan-de-blan-ekstra-bryut-beloe-igristoe-vino-0-75-l/"},{"name":"WineStyle","url":"https://winestyle.ru/products/Usadba-Perovskih-Brut-Blanc-De-Blancs-2021.html"}],"landing_url":""},{"title":"Усадьба Дивноморское Blanc de Blancs 2021","brand":"Усадьба Дивноморское","producer":"ООО «Усадьба Дивноморское»","vintage":"2021","color":"Белое","sugar":"Брют","type":"Игристое","method":"","region":"Кубань. Геленджик","grapes":["Шардоне"],"rating":"Игристые 12'25","rank":7,"photo":"https://static.tildacdn.com/stor3830-3130-4539-a635-373332313534/32416d4d4baeb2d1224cb115c1cba1c8.jpg","price":4250,"shop_links":[{"name":"Decanter","url":"https://decanter.ru/product/usadba-divnomorskoe-blanc-de-blancs-2021-id258948"}],"landing_url":"https://firstguide.ru/usadba-divnomorskoe-blanc-de-blancs-2021"},{"title":"Темелион Brut 2020","brand":"Темелион","producer":"ООО «Вина Лефкадии»","vintage":"2020","color":"Белое","sugar":"Брют","type":"Игристое","method":"","region":"Кубань. Крымск","grapes":["Шардоне"],"rating":"Игристые 12'25","rank":8,"photo":"https://static.tildacdn.com/stor6533-3330-4233-b437-353864356532/da7f4c6148ed7a47380307ce24baa15d.jpg","price":5490,"shop_links":[{"name":"SimpleWine","url":"https://simplewine.ru/catalog/product/temelion_vintazh_2023_075_155100"}],"landing_url":"https://firstguide.ru/temelion-brut-2020"},{"title":"Абрау-Дюрсо Cuvée Alexander II 2022","brand":"Абрау-Дюрсо","producer":"ООО «Абрау-Дюрсо»","vintage":"2022","color":"Белое","sugar":"Брют","type":"Игристое","method":"","region":"Кубань. Семигорье","grapes":["Шардоне","Пино нуар","Рислинг"],"rating":"Игристые 12'25","rank":9,"photo":"https://static.tildacdn.com/stor3765-6364-4735-b937-653535666432/aa1a0eabaa115613332b7e215f11bbcb.jpg","price":6300,"shop_links":[{"name":"MBG Wine","url":"https://mbg-store.ru/wine/18776/blan-de-blan-tz-usadba-perovskikh"},{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/igristye-vina/usadba-perovskih-blan-de-blan-ekstra-bryut-beloe-igristoe-vino-0-75-l/"},{"name":"WineStyle","url":"https://winestyle.ru/products/Usadba-Perovskih-Brut-Blanc-De-Blancs-2021.html"}],"landing_url":""},{"title":"Вина Арпачина Иноходец Сибирьковый 2022","brand":"Вина Арпачина","producer":"ООО «ЗЕНА»","vintage":"2022","color":"Белое","sugar":"Экстра Брют","type":"Игристое","method":"","region":"Долина Дона","grapes":["Сибирьковый"],"rating":"Игристые 12'25","rank":10,"photo":"https://static.tildacdn.com/stor3031-6333-4565-b663-356464303532/0986ac205379c2ba0daa0b2c4701c755.jpg","price":4906,"shop_links":[{"name":"WineStreet","url":"https://winestreet.ru/champagne-and-sparkling-wines/vina-arpachina/arpachino-inohodetz-sibir-kovyii-075-l.html"}],"landing_url":"https://firstguide.ru/vina-arpachina-inokhodets-sibirkovyi-2022"},{"title":"Красностоп Гранд Резерв Константин Дзитоев 2020","brand":"КД","producer":"ИП Дзитоев К.","vintage":"2020","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Долина Терека","grapes":["Красностоп золотовский"],"rating":"Красностопы 11'25","rank":1,"photo":"https://static.tildacdn.com/stor3437-3433-4136-a635-323038303938/29fe1b872f8c262196aefb8a2a0c9d17.jpg","price":6100,"shop_links":[{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/tihie-vina/krasnostop-grand-rezerv-konstantin-dzitoev-krasnoe-suhoe-vino-0-75-l/"}],"landing_url":"https://firstguide.ru/krasnostop-grand-rezerv-konstantin-dzitoev-2020"},{"title":"Галицкий и Галицкий Красностоп 2022","brand":"Галицкий и Галицкий","producer":"ООО «Галицкий и Галицкий»","vintage":"2022","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Семигорье","grapes":["Красностоп золотовский"],"rating":"Красностопы 11'25","rank":2,"photo":"https://static.tildacdn.com/stor6361-3665-4335-b264-393763313130/ab75fd85936d4a20ee950849d3e35389.jpg","price":3500,"shop_links":[{"name":"Первый нос","url":"https://www.1nos.ru/item/galitskiy-i-galitskiy-krasnostop-zolotovskiy.htm"}],"landing_url":"https://firstguide.ru/galitskiy-i-galitskiy-krasnostop-2022"},{"title":"Вина Арпачина Маныцкое сладкое Красностоп Золотовский 2018","brand":"Вина Арпачина","producer":"ООО «ЗЕНА»","vintage":"2018","color":"Красное","sugar":"Сладкое","type":"Тихое","method":"","region":"Долина Дона","grapes":["Красностоп золотовский"],"rating":"Красностопы 11'25","rank":3,"photo":"https://static.tildacdn.com/stor3961-3761-4932-b432-626531356232/d2f8898f5fa62e3404729d28a4774b10.jpg","price":4700,"shop_links":[{"name":"Vino.ru","url":"https://vino.ru/avtorskoe-vino/zena-vino-znmp-arpachin-sladkoe-krasnoe-manytskoe-krasnostop-zolotovskiy-0-75/"}],"landing_url":"https://firstguide.ru/vina-arpachina-manytskoe-sladkoe-krasnostop-zolotovskiy-2018"},{"title":"Вина Арпачина Красностоп Золотовский 2019","brand":"Вина Арпачина","producer":"ООО «ЗЕНА»","vintage":"2019","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Долина Дона","grapes":["Красностоп золотовский"],"rating":"Красностопы 11'25","rank":4,"photo":"https://static.tildacdn.com/stor3133-6337-4030-b166-393063333464/a11de9be70015b37ea37fceb1bca2b8a.jpg","price":6200,"shop_links":[{"name":"WineStyle","url":"https://winestyle.ru/products/Vina-Arpachina-Krasnostop-Zolotovskiy-2019.html"}],"landing_url":"https://firstguide.ru/vina-arpachina-krasnostop-zolotovskiy-2019"},{"title":"Ведерников Красностоп Золотовский Выдержанное 2020","brand":"Ведерниковъ","producer":"ООО «Винодельня Ведерниковъ»","vintage":"2020","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Долина Дона. Усть-Донецкий","grapes":["Красностоп золотовский"],"rating":"Красностопы 11'25","rank":5,"photo":"https://static.tildacdn.com/stor6139-3431-4266-b730-656662383939/022652a8960e5a1b398a1593bcef5bd5.jpg","price":4850,"shop_links":[{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/tihie-vina/vinodelnya-vedernikov-krasnostop-zolotovskiy-vyderzhannoe-2020-krasnoe-suhoe-vino-0-75-l/"}],"landing_url":"https://firstguide.ru/vedernikov-krasnostop-zolotovskiy-vyderzhannoe-2020"},{"title":"Ведерников Резерв Красностоп Золотовский 2020","brand":"Ведерниковъ","producer":"ООО «Винодельня Ведерниковъ»","vintage":"2020","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Долина Дона. Усть-Донецкий","grapes":["Красностоп золотовский"],"rating":"Красностопы 11'25","rank":6,"photo":"https://static.tildacdn.com/stor3161-3636-4261-a138-373931336632/8581c2ecaca9f9fac9d04cef44bedfb3.jpg","price":4850,"shop_links":[{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/tihie-vina/vinodelnya-vedernikov-krasnostop-zolotovskiy-vyderzhannoe-2020-krasnoe-suhoe-vino-0-75-l/"}],"landing_url":"https://firstguide.ru/vedernikov-rezerv-krasnostop-zolotovskiy-2020"},{"title":"Моно Красностоп Узунов 2023","brand":"Mono","producer":"КФХ Узунова Я.А.","vintage":"2023","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Анапа","grapes":["Красностоп золотовский"],"rating":"Красностопы 11'25","rank":7,"photo":"https://static.tildacdn.com/stor3039-3937-4633-b361-653637376265/54d2cb006fffb1b4e792f38da96f52ec.jpg","price":2230,"shop_links":[{"name":"WineStyle","url":"https://winestyle.ru/products/Winery-Uzunov-Mono-Krasnostop-2023.html"}],"landing_url":"https://firstguide.ru/mono-krasnostop-uzunov-2023"},{"title":"Фанагория Крю Лермонт 2023","brand":"Cru Lermont","producer":"ООО АПФ «Фанагория»","vintage":"2023","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Таманский полуостров","grapes":["Красностоп золотовский"],"rating":"Красностопы 11'25","rank":8,"photo":"https://static.tildacdn.com/stor3038-3534-4538-b430-393136656139/39b43641f5abb79f9881265eb1310b3c.png","price":900,"shop_links":[{"name":"Fortwine","url":"https://fortwine.ru/product/vino-fanagoria-cru-lermont-krasnostop-2023-0-75/"}],"landing_url":"https://firstguide.ru/fanagoriya-kryu-lermont-2023"},{"title":"Собер Баш Красностоп Резерв 2020","brand":"Собер Баш","producer":"ООО «Собер-Баш»","vintage":"2020","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань","grapes":["Красностоп золотовский"],"rating":"Красностопы 11'25","rank":9,"photo":"https://static.tildacdn.com/stor6663-3666-4239-b365-343239366461/2ba48c5e37d8987fe7c07c4dd923dd3c.jpg","price":1300,"shop_links":[{"name":"Vino.ru","url":"https://vino.ru/avtorskoe-vino/sbbash-rv-zgu-kuban-dolina-reki-afips-sukhoe-krasnoe-krasnostop-2020-0-75-2020/"}],"landing_url":"https://firstguide.ru/sober-bash-krasnostop-rezerv-2020"},{"title":"Гусев Красностоп Золотовский 2022","brand":"Семейная винодельня Гусевъ","producer":"КФХ Гусев Д.Э.","vintage":"2022","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Нижняя Волга","grapes":["Красностоп золотовский"],"rating":"Красностопы 11'25","rank":10,"photo":"https://static.tildacdn.com/stor3734-3236-4361-b737-383939653462/637dfbd7967186b0624d92be67e32417.jpg","price":1930,"shop_links":[{"name":"WineHelp","url":"https://winehelp2.ru/product/vino-semeynaya-vinodelnya-gusev-krasnostop-zolotovskiy-2019-750-ml/"}],"landing_url":"https://firstguide.ru/gusev-krasnostop-zolotovskiy-2022"},{"title":"Сикоры Совиньон Блан 2024","brand":"Sikory","producer":"ООО Имение «Сикоры»","vintage":"2024","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Семигорье","grapes":["Совиньон блан"],"rating":"Совиньон Бланы 09'25","rank":1,"photo":"https://static.tildacdn.com/stor6462-3135-4731-b736-613033653234/55411600.jpg","price":2290,"shop_links":[{"name":"SimpleWine","url":"https://simplewine.ru/catalog/product/sovinon_blan_2024_075_157035/"}],"landing_url":"https://firstguide.ru/sikory-sovinon-blan-2024"},{"title":"Мысхако Блан Аут Совиньон Блан 2022","brand":"Мысхако","producer":"ООО «Мысхако»","vintage":"2022","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Новороссийск","grapes":["Совиньон блан"],"rating":"Совиньон Бланы 09'25","rank":2,"photo":"https://static.tildacdn.com/stor6139-6361-4335-a239-343037643566/52526406.jpg","price":950,"shop_links":[{"name":"WineStreet","url":"https://winestreet.ru/wine/myskhako/myishako-blan-aut-sovin-on-blan-075-l.html"}],"landing_url":"https://firstguide.ru/myshkako-blan-aut-sovinon-blan-2022"},{"title":"Узунов Совиньон Блан 2023","brand":"Узунов","producer":"КФХ Узунова Я.А.","vintage":"2023","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Анапа","grapes":["Совиньон блан"],"rating":"Совиньон Бланы 09'25","rank":3,"photo":"https://static.tildacdn.com/stor6336-3133-4532-a132-666463303237/55437986.jpg","price":2100,"shop_links":[{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/tihie-vina/vinodelnya-uzunov-sovinon-blan-beloe-suhoe-vino-0-75-l/"}],"landing_url":"https://firstguide.ru/uzunov-sovinon-blan-2023"},{"title":"Сикоры Семейный Резерв Совиньон Блан 2022","brand":"Sikory","producer":"ООО Имение «Сикоры»","vintage":"2022","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Семигорье","grapes":["Совиньон блан"],"rating":"Совиньон Бланы 09'25","rank":4,"photo":"https://static.tildacdn.com/stor3434-3765-4334-a433-653262373836/78692903.jpg","price":4640,"shop_links":[{"name":"SimpleWine","url":"https://simplewine.ru/catalog/product/sovinon_blan_semeynyy_rezerv_2022_075_151544/"}],"landing_url":"https://firstguide.ru/sikory-semeinyy-rezerv-rezerv-sovinon-blan-2022"},{"title":"Шумринка Петрикор Совиньон Блан 2024","brand":"Шумринка","producer":"ООО «Шумринка»","vintage":"2024","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Крымск","grapes":["Совиньон блан"],"rating":"Совиньон Бланы 09'25","rank":5,"photo":"https://static.tildacdn.com/stor6133-6631-4731-b635-316362653365/27118444.jpg","price":2490,"shop_links":[{"name":"SimpleWine","url":"https://simplewine.ru/catalog/product/petrikor_sovinon_blan_2024_075_157507/"}],"landing_url":"https://firstguide.ru/shumrinka-petrikor-sovinon-blan-2024"},{"title":"Галицкий и Галицкий Красная Горка Совиньон Блан 2023","brand":"Галицкий и Галицкий","producer":"ООО «Галицкий и Галицкий»","vintage":"2023","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Семигорье","grapes":["Совиньон блан"],"rating":"Совиньон Бланы 09'25","rank":6,"photo":"https://static.tildacdn.com/stor6562-6334-4436-a566-356339636331/55038336.jpg","price":3990,"shop_links":[{"name":"SimpleWine","url":"https://simplewine.ru/catalog/product/sovinon_blan_krasnaya_gorka_2023_075_156396/"}],"landing_url":"https://firstguide.ru/galitskiy-i-galitskiy-krasnaya-gorka-sovinon-blan-2023"},{"title":"Эссе Совиньон Блан 2024","brand":"Esse","producer":"ООО «Сатера»","vintage":"2024","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Крым. Бахчисарай","grapes":["Совиньон блан"],"rating":"Совиньон Бланы 09'25","rank":7,"photo":"https://static.tildacdn.com/stor3737-3830-4632-a235-363636643136/58009432.jpg","price":800,"shop_links":[{"name":"Luding","url":"https://luding.ru/collection/item/esse-sauvignon-satera--4488/"}],"landing_url":"https://firstguide.ru/esse-sovinon-blan-2024"},{"title":"Авантюрист Совиньон Блан 2023","brand":"Авантюрист","producer":"ООО «Сухая Гора»","vintage":"2023","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Новороссийск","grapes":["Совиньон блан"],"rating":"Совиньон Бланы 09'25","rank":8,"photo":"https://static.tildacdn.com/stor3935-3264-4033-b535-343238336239/19103555.jpg","price":1400,"shop_links":[{"name":"WineStyle","url":"https://winestyle.ru/products/Adventurer-Sauvignon-Blanc-2023.html"}],"landing_url":"https://firstguide.ru/avantyurist-sovinon-blan"},{"title":"Николаев и Сыновья Совиньон Блан 2024","brand":"Николаев и Сыновья","producer":"Николаев и Сыновья","vintage":"2024","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Крымск","grapes":["Совиньон блан"],"rating":"Совиньон Бланы 09'25","rank":9,"photo":"https://static.tildacdn.com/stor6337-3330-4939-b864-346635353935/56504546.jpg","price":2590,"shop_links":[{"name":"Vino.ru","url":"https://vino.ru/avtorskoe-vino/kfkh-nikolaev-vino-sukhoe-beloe-sovinon-blan-0-75-2023/"}],"landing_url":"https://firstguide.ru/nikolaev-i-synovya-sovinon-blan-2024"},{"title":"Бельмас Совиньон Блан 2021","brand":"Belmas","producer":"ООО «Винодельня Бельмас»","vintage":"2021","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Севастополь. Балаклава","grapes":["Совиньон блан"],"rating":"Совиньон Бланы 09'25","rank":10,"photo":"https://static.tildacdn.com/stor3536-3761-4761-b732-383739616433/63118100.jpg","price":2332,"shop_links":[{"name":"Luding","url":"https://luding.ru/collection/item/sauvignon-blanc-belmas--285845/"}],"landing_url":"https://firstguide.ru/belmas-sovinon-blan-2021"},{"title":"Галицкий и Галицкий Розе Красная Горка 2024","brand":"Галицкий и Галицкий","producer":"ООО «Галицкий и Галицкий»","vintage":"2024","color":"Розовое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Семигорье","grapes":["Каберне совиньон","Пино нуар","Цимлянский чёрный"],"rating":"Вина для лета '25","rank":1,"photo":"https://static.tildacdn.com/stor3630-6138-4330-b062-633433353634/55097215.png","price":3690,"shop_links":[{"name":"SimpleWine","url":"https://simplewine.ru/catalog/product/roze_krasnaya_gorka_2023_075_151027"}],"landing_url":"https://firstguide.ru/galitskiy-i-galitskiy-roze-krasnaya-gorka-2024"},{"title":"Криница Риваж 2021","brand":"Криница","producer":"ООО «Винодельня Криница»","vintage":"2021","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Геленджик","grapes":["Каберне совиньон","Каберне фран","Сира"],"rating":"Вина для лета '25","rank":2,"photo":"https://static.tildacdn.com/stor3264-3165-4733-a161-376234353364/93578033.jpg","price":2980,"shop_links":[{"name":"Decanter","url":"https://decanter.ru/product/krinitsa-rivage-2020-id231294"}],"landing_url":"https://firstguide.ru/krinitsa-rivazh-2021"},{"title":"Mantra Estate Syrah 2022","brand":"Mantra Estate","producer":"Mantra Estate","vintage":"2022","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Крымск","grapes":["Сира"],"rating":"Вина для лета '25","rank":3,"photo":"https://static.tildacdn.com/stor6330-6139-4261-b764-313866383238/44132655.jpg","price":3990,"shop_links":[{"name":"SimpleWine","url":"https://simplewine.ru/catalog/product/mantra_syrah_2022_075_155486/"}],"landing_url":"https://firstguide.ru/mantra-estate-syrah-2022"},{"title":"UW DV 2023","brand":"Urban Winery","producer":"Urban Winery","vintage":"2023","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Москва","grapes":["Дивико"],"rating":"Вина для лета '25","rank":4,"photo":"https://static.tildacdn.com/stor6164-3735-4137-b735-393261396565/78974073.jpg","price":4700,"shop_links":[{"name":"Urban Winery","url":"https://urbanwinery.ru/"}],"landing_url":"https://firstguide.ru/uw-dv-2023"},{"title":"Высокий Берег Классика Rose Extra Brut 2021","brand":"Высокий Берег","producer":"ООО «Кубань-Вино»","vintage":"2021","color":"Розовое","sugar":"Экстра Брют","type":"Игристое","method":"классический","region":"Кубань. Таманский полуостров","grapes":["Мюллер-тургау","Пино блан","Саперави"],"rating":"Вина для лета '25","rank":5,"photo":"https://static.tildacdn.com/stor6639-3535-4531-a661-343434626139/77478386.jpg","price":967,"shop_links":[{"name":"Decanter","url":"https://decanter.ru/product/vysokij-bereg-rose-extra-brut-2023-id258787"}],"landing_url":"https://firstguide.ru/vysokiy-bereg-klassika-rose-extra-brut-2021"},{"title":"Скалистый Берег Блан де Нуар 2020","brand":"Скалистый Берег","producer":"ООО «Скалистый Берег»","vintage":"2020","color":"Белое","sugar":"Экстра Брют","type":"Игристое","method":"","region":"Кубань. Анапа","grapes":["Пино нуар"],"rating":"Вина для лета '25","rank":6,"photo":"https://static.tildacdn.com/stor6338-6533-4430-b134-623537623435/68088694.jpg","price":3490,"shop_links":[{"name":"SimpleWine","url":"https://simplewine.ru/catalog/product/skalistyy_bereg_blan_de_nuar_2020_075_154012/"}],"landing_url":"https://firstguide.ru/skalisty-bereg-blanc-de-noirs-2020"},{"title":"А. Гордиенко & М. Николаев Тигристый Петнат 2023","brand":"А. Гордиенко & М. Николаев","producer":"ООО «Вина Лефкадии»","vintage":"2023","color":"Белое","sugar":"Брют","type":"Игристое","method":"","region":"Кубань. Крымск","grapes":["Мускарис","Совиньон гри"],"rating":"Вина для лета '25","rank":7,"photo":"https://static.tildacdn.com/stor3035-3532-4134-b033-383563323965/25522375.jpg","price":3582,"shop_links":[{"name":"WineHelp","url":"https://winehelp2.ru/product/igristoe-vino-a-gordienko-m-nikolaev-tigristyy-petnat-2023-750-ml-13/"}],"landing_url":"https://firstguide.ru/a-gordienko-i-m-nikolaev-tigristyy-petnat-2023"},{"title":"Лефкадия Темелион Винтаж 2020","brand":"Темелион","producer":"ООО «Вина Лефкадии»","vintage":"2020","color":"Белое","sugar":"Брют","type":"Игристое","method":"","region":"Кубань. Крымск","grapes":["Шардоне"],"rating":"Вина для лета '25","rank":8,"photo":"https://static.tildacdn.com/stor6439-6538-4738-a664-333065363236/83055635.jpg","price":5490,"shop_links":[{"name":"SimpleWine","url":"https://simplewine.ru/catalog/product/temelion_vintazh_2023_075_155100/"}],"landing_url":"https://firstguide.ru/lefkadiya-temelion-vintazh-2020"},{"title":"Ведерниковъ Цимлянский Черный Сибирьковый Резерв 2022","brand":"Ведерниковъ","producer":"ООО «Винодельня Ведерниковъ»","vintage":"2022","color":"Белое","sugar":"Экстра Брют","type":"Игристое","method":"","region":"Долина Дона. Усть-Донецкий","grapes":["Сибирьковый","Цимлянский чёрный"],"rating":"Вина для лета '25","rank":9,"photo":"https://static.tildacdn.com/stor6463-3437-4166-a463-343137326364/82984473.jpg","price":1627,"shop_links":[{"name":"Decanter","url":"https://decanter.ru/product/vedernikov-reserve-tsimlyansky-cherny-sibirkoviy-id259050"}],"landing_url":"https://firstguide.ru/vedernikov-tsimlyanskiy-chernyy-sibirkovyy-rezerv-2022"},{"title":"Галицкий и Галицкий Рислинг Красная Горка 2024","brand":"Галицкий и Галицкий","producer":"ООО «Галицкий и Галицкий»","vintage":"2024","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Семигорье","grapes":["Рислинг"],"rating":"Вина для лета '25","rank":10,"photo":"https://static.tildacdn.com/stor6564-3162-4463-b038-653762346464/51496196.jpg","price":3990,"shop_links":[{"name":"SimpleWine","url":"https://simplewine.ru/catalog/product/risling_krasnaya_gorka_2024_075_155480/"}],"landing_url":"https://firstguide.ru/galitskiy-i-galitskiy-riesling-krasnaya-gorka-2024"},{"title":"Belmas Riesling 2021","brand":"Belmas","producer":"ООО «Винодельня Бельмас»","vintage":"2021","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Севастополь. Балаклава","grapes":["Рислинг"],"rating":"Рислинги 04'25","rank":1,"photo":"https://static.tildacdn.com/stor3732-3964-4235-a265-303435303439/88937016.jpg","price":6100,"shop_links":[{"name":"WineHelp","url":"https://winehelp2.ru/product/vino-belmas-ri-belmas-risling-2019-750-ml/"}],"landing_url":"https://firstguide.ru/belmas-riesling-2021"},{"title":"Сикоры Рислинг 2023","brand":"Sikory","producer":"ООО Имение «Сикоры»","vintage":"2023","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Семигорье","grapes":["Рислинг"],"rating":"Рислинги 04'25","rank":2,"photo":"https://static.tildacdn.com/stor3162-3364-4932-b138-623639373838/44447150.jpg","price":2190,"shop_links":[{"name":"SimpleWine","url":"https://simplewine.ru/catalog/product/risling_2023_075_150817"}],"landing_url":"https://firstguide.ru/sikory-riesling-2023"},{"title":"Pavel Shvets Riesling Oak 2022","brand":"Pavel Shvets","producer":"ООО «Уппа Винери»","vintage":"2022","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Севастополь. Балаклава","grapes":["Рислинг"],"rating":"Рислинги 04'25","rank":3,"photo":"https://static.tildacdn.com/stor3237-3131-4963-b630-663761346664/45119826.jpg","price":9000,"shop_links":[{"name":"WineStyle","url":"https://winestyle.ru/products/Pavel-Shvets-Riesling-Oak-2022.html"}],"landing_url":"https://firstguide.ru/pavel-shvets-riesling-oak-2022"},{"title":"Domaine Lipko Riesling 2022","brand":"Domaine Lipko","producer":"Domaine Lipko","vintage":"2022","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Севастополь. Балаклава","grapes":["Рислинг"],"rating":"Рислинги 04'25","rank":4,"photo":"https://static.tildacdn.com/stor6564-3932-4766-b966-616539653134/20992269.jpg","price":1898,"shop_links":[{"name":"WineHelp","url":"https://winehelp2.ru/product/vino-domen-lipko-risling-2022-750-ml-12-4-/"}],"landing_url":"https://firstguide.ru/domaine-lipko-riesling-2022"},{"title":"В2Р Рислинг 2023","brand":"В2Р","producer":"ГКФХ Буланый Р.В.","vintage":"2023","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Анапа","grapes":["Рислинг"],"rating":"Рислинги 04'25","rank":5,"photo":"https://static.tildacdn.com/stor3131-6534-4438-b036-386161373561/67939308.jpg","price":1660,"shop_links":[{"name":"Vino.ru","url":"https://vino.ru/avtorskoe-vino/bulannyy-vino-sukhoe-beloe-risling-0-75-2023/"}],"landing_url":"https://firstguide.ru/v2r-riesling-2023"},{"title":"Сикоры Рислинг Семейный Резерв 2021","brand":"Sikory","producer":"ООО Имение «Сикоры»","vintage":"2021","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Семигорье","grapes":["Рислинг"],"rating":"Рислинги 04'25","rank":6,"photo":"https://static.tildacdn.com/stor3436-6666-4135-b837-353435303337/24935864.jpg","price":4690,"shop_links":[{"name":"SimpleWine","url":"https://simplewine.ru/catalog/product/risling_semeynyy_rezerv_2021_075_154258/"}],"landing_url":"https://firstguide.ru/sikory-riesling-semeinyi-rezerv-2021"},{"title":"Скалистый берег Рислинг 2021","brand":"Скалистый Берег","producer":"ООО «Скалистый Берег»","vintage":"2021","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Анапа","grapes":["Рислинг"],"rating":"Рислинги 04'25","rank":7,"photo":"https://static.tildacdn.com/stor3638-6632-4333-a165-396237333164/18316827.jpg","price":2150,"shop_links":[{"name":"Vino.ru","url":"https://vino.ru/avtorskoe-vino/sk-bereg-rv-zgu-kuban-anapa-sukhoe-beloe-skalistyy-bereg-risling-0-75-2021"}],"landing_url":"https://firstguide.ru/skalisty-bereg-riesling-2021"},{"title":"Rem Akchurin Riesling 2023","brand":"Рем Акчурин","producer":"ИП Акчурин Р.А.","vintage":"2023","color":"Белое","sugar":"Полусухое","type":"Тихое","method":"","region":"Севастополь. Балаклава","grapes":["Рислинг"],"rating":"Рислинги 04'25","rank":8,"photo":"https://static.tildacdn.com/stor3536-3961-4436-a235-363637336138/83467827.jpg","price":2399,"shop_links":[{"name":"Luding","url":"https://luding.ru/collection/item/riesling-rem-akchurin--483923"}],"landing_url":"https://firstguide.ru/rem-akchurin-riesling-2023"},{"title":"Бельбек Рислинг сухое 2023","brand":"Бельбек","producer":"ООО «Бельбек»","vintage":"2023","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Севастополь. Качинская долина","grapes":["Рислинг"],"rating":"Рислинги 04'25","rank":9,"photo":"https://static.tildacdn.com/stor3338-3065-4735-b961-343934393130/20154134.jpg","price":1639,"shop_links":[{"name":"WineHelp","url":"https://winehelp2.ru/product/vino_belbek_risling_avtorskie_vina_sergeya_beskaravaynogo_2016_750_ml/"}],"landing_url":"https://firstguide.ru/belbek-riesling-sukhoe-2023"},{"title":"Криница Рислинг 2022","brand":"Криница","producer":"ООО «Винодельня Криница»","vintage":"2022","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Геленджик","grapes":["Рислинг"],"rating":"Рислинги 04'25","rank":10,"photo":"https://static.tildacdn.com/stor3338-3633-4238-a431-363630356265/36469185.jpg","price":3150,"shop_links":[{"name":"WineStyle","url":"https://winestyle.ru/products/Krinica-Riesling-2022.html"}],"landing_url":"https://firstguide.ru/krinitsa-riesling-2022"},{"title":"Chateau Cotes de Saint Daniel Tramonto 2017","brand":"Château Côtes de Saint Daniel","producer":"Château Côtes de Saint Daniel","vintage":"2017","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Крым. Южный берег","grapes":["Каберне совиньон","Мерло","Саперави"],"rating":"Недорогие романтические 02'25","rank":1,"photo":"https://static.tildacdn.com/stor3135-3737-4461-a234-633636383833/89859101.jpg","price":2990,"shop_links":[{"name":"Азбука вкуса","url":"https://av.ru/i/531952/"}],"landing_url":"https://firstguide.ru/chateau-cotes-de-saint-daniel-tramonto-2017"},{"title":"Inkerman Алиготе 2023","brand":"Inkerman","producer":"Inkerman","vintage":"2023","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Севастополь","grapes":["Алиготе"],"rating":"Недорогие романтические 02'25","rank":2,"photo":"https://static.tildacdn.com/stor6533-3433-4465-a336-663962396530/78097587.jpg","price":800,"shop_links":[],"landing_url":"https://firstguide.ru/inkerman-aligote-2023"},{"title":"Loco Cimbali Riesling 2023","brand":"Loco Cimbali","producer":"АО «Агрофирма Золотая Балка»","vintage":"2023","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Севастополь. Балаклава","grapes":["Рислинг"],"rating":"Недорогие романтические 02'25","rank":3,"photo":"https://static.tildacdn.com/stor3638-3638-4562-b732-303064633461/33736243.jpg","price":1500,"shop_links":[{"name":"SimpleWine","url":"https://simplewine.ru/catalog/product/loco_cimbali_riesling_075_149750/"}],"landing_url":"https://firstguide.ru/loco-cimbali-riesling-2023"},{"title":"Винодельня Ведерниковъ Сибирьковый 2023","brand":"Ведерниковъ","producer":"ООО «Винодельня Ведерниковъ»","vintage":"2023","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Долина Дона. Усть-Донецкий","grapes":["Сибирьковый"],"rating":"Недорогие романтические 02'25","rank":4,"photo":"https://static.tildacdn.com/stor6634-3164-4334-a563-373366333165/93901881.jpg","price":1070,"shop_links":[{"name":"WineStyle","url":"https://winestyle.ru/products/Winery-Vedernikov-Sibirkoviy-2023.html"}],"landing_url":"https://firstguide.ru/vinodelnya-vedernikov-sibirkovy-2023"},{"title":"Цимлянское Кюве Саперави 2023","brand":"Цимлянское Кюве","producer":"ООО «Цимлянские вина»","vintage":"2023","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Долина Дона. Цимлянский","grapes":["Саперави северный"],"rating":"Недорогие романтические 02'25","rank":5,"photo":"https://static.tildacdn.com/stor3164-3839-4437-b130-323165336630/82664675.png","price":1000,"shop_links":[],"landing_url":"https://firstguide.ru/tsimlyanskoe-kuve-saperavi-2023"},{"title":"Абрау-Дюрсо Виктор Дравиньи Розе Брют 2021","brand":"Абрау-Дюрсо","producer":"ООО «Абрау-Дюрсо»","vintage":"2021","color":"Розовое","sugar":"Брют","type":"Игристое","method":"классический","region":"Кубань. Семигорье","grapes":["Пино нуар","Шардоне"],"rating":"Недорогие романтические 02'25","rank":6,"photo":"https://static.tildacdn.com/stor6538-6539-4330-a462-356133303464/48366435.jpg","price":1100,"shop_links":[{"name":"Luding","url":"https://luding.ru/collection/item/victor-dravigny-brut-rose-abrau-durso--28031/"}],"landing_url":"https://firstguide.ru/abrau-dyurso-viktor-dravinyi-roze-bryut-2021"},{"title":"Фанагория Блан де Блан Брют 2022","brand":"Fanagoria","producer":"ООО АПФ «Фанагория»","vintage":"2022","color":"Белое","sugar":"Брют","type":"Игристое","method":"классический","region":"Кубань. Таманский полуостров","grapes":["Шардоне"],"rating":"Недорогие романтические 02'25","rank":7,"photo":"https://static.tildacdn.com/stor3666-3465-4139-b338-663561343163/20456940.png","price":860,"shop_links":[{"name":"Luding","url":"https://luding.ru/collection/item/fanagoria-blanc-de-blancs-brut-kuban-tamanskiy-poluostrov---191653"}],"landing_url":"https://firstguide.ru/fanagoria-blanc-de-blancs-bryut-2022"},{"title":"Цимлянское Кюве Цимлянский Черный Мерло Брют Красный 2023","brand":"Цимлянское Кюве","producer":"ООО «Цимлянские вина»","vintage":"2023","color":"Красное","sugar":"Брют","type":"Игристое","method":"классический","region":"Долина Дона. Цимлянский","grapes":["Мерло","Цимлянский чёрный"],"rating":"Недорогие романтические 02'25","rank":8,"photo":"https://static.tildacdn.com/stor3464-6431-4264-b932-646366333237/97467694.jpg","price":1000,"shop_links":[],"landing_url":"https://firstguide.ru/tsimlyanskoe-kuve-tsimlyanskiy-chernyy-merlo-bryut-2023"},{"title":"Цимлянское Ц розовое брют","brand":"Цимлянское Ц","producer":"ООО «Цимлянские вина»","vintage":"NV","color":"Розовое","sugar":"Брют","type":"Игристое","method":"классический","region":"Долина Дона. Цимлянский","grapes":["Бианка","Выдвиженец","Мерло"],"rating":"Недорогие романтические 02'25","rank":9,"photo":"https://static.tildacdn.com/stor6165-6261-4366-b838-313666666237/37598779.jpg","price":450,"shop_links":[{"name":"Магнит","url":"https://magnit.ru/product/1000391927-vino_igristoe_tsimlyanskoe_ts_roz_bryut_0_75l_tsimlyanskie_vina"}],"landing_url":"https://firstguide.ru/tsimlyanskoe-ts-roze-bryut"},{"title":"Alma Valley Солнце Воздух Виноград","brand":"Alma Valley","producer":"Alma Valley","vintage":"NV","color":"Красное","sugar":"Полусухое","type":"Тихое","method":"","region":"Крым. Бахчисарай","grapes":["Каберне совиньон","Каберне фран","Сира","Темпранильо"],"rating":"Недорогие романтические 02'25","rank":10,"photo":"https://static.tildacdn.com/stor6364-3837-4030-a333-653536366561/80451796.jpg","price":450,"shop_links":[{"name":"WineStyle","url":"https://winestyle.ru/products/Alma-Valley-Solnce-Vozduh-Vinograd-White-Semidry-2023.html"}],"landing_url":"https://firstguide.ru/alma-valley-solnce-vozdukh-vinograd"},{"title":"Усадьба Дивноморское Grande Cuvee 2020","brand":"Усадьба Дивноморское","producer":"ООО «Усадьба Дивноморское»","vintage":"2020","color":"Белое","sugar":"Брют","type":"Игристое","method":"","region":"Кубань. Геленджик","grapes":["Пино нуар","Шардоне"],"rating":"Игристые 12'24","rank":1,"photo":"https://static.tildacdn.com/stor3531-3931-4434-b735-326465373930/18386101.jpg","price":3995,"shop_links":[{"name":"AST","url":"https://ast.wine/catalog/product/usadba_divnomorskoe_grande_cuvee_169949_44525/"}],"landing_url":"https://firstguide.ru/usadba-divnomorskoe-grande-cuvee-2020"},{"title":"Fanagoria Primum Alveus Rose Brut 2019","brand":"Primum Alveus","producer":"ООО АПФ «Фанагория»","vintage":"2019","color":"Розовое","sugar":"Брют","type":"Игристое","method":"классический","region":"Кубань. Таманский полуостров","grapes":["Пино нуар"],"rating":"Игристые 12'24","rank":2,"photo":"https://static.tildacdn.com/stor3331-3765-4364-a131-643239656632/76793189.jpg","price":1680,"shop_links":[{"name":"Fortwine","url":"https://fortwine.ru/product/igristoe-vino-fanagoria-primum-alveus-rose-brut-aged-2019-0-75/"}],"landing_url":"https://firstguide.ru/fanagoria-primum-alveus-rose-brut-2019"},{"title":"Fanagoria Primum Alveus Blanc de Blancs Brut 2017","brand":"Primum Alveus","producer":"ООО АПФ «Фанагория»","vintage":"2017","color":"Белое","sugar":"Брют","type":"Игристое","method":"классический","region":"Кубань. Таманский полуостров","grapes":["Шардоне"],"rating":"Игристые 12'24","rank":3,"photo":"https://static.tildacdn.com/stor3338-6532-4966-a265-656435366430/62274125.jpg","price":3920,"shop_links":[{"name":"Fortwine","url":"https://fortwine.ru/product/igristoe-vino-fanagoria-primum-alveus-blanc-de-blancs-brut-aged-2017-0-75/"}],"landing_url":"https://firstguide.ru/fanagoria-primum-alveus-blanc-de-blancs-brut-2017"},{"title":"Золотая Балка Черный Принц Блан де Блан 2019","brand":"Чёрный Принц","producer":"АО «Агрофирма Золотая Балка»","vintage":"2019","color":"Белое","sugar":"Экстра Брют","type":"Игристое","method":"","region":"Севастополь. Балаклава","grapes":["Шардоне"],"rating":"Игристые 12'24","rank":4,"photo":"https://static.tildacdn.com/stor3637-6436-4365-b063-353061613437/93923081.jpg","price":5000,"shop_links":[{"name":"Decanter","url":"https://decanter.ru/product/zolotaya-balka-black-prince-id253089"}],"landing_url":"https://firstguide.ru/zolotaya-balka-chernyy-prints-blan-de-blan-2019"},{"title":"Ведерниковъ Сибирьковый Экстра Брют 2017","brand":"Ведерниковъ","producer":"ООО «Винодельня Ведерниковъ»","vintage":"2017","color":"Белое","sugar":"Экстра Брют","type":"Игристое","method":"классический","region":"Долина Дона. Усть-Донецкий","grapes":["Сибирьковый"],"rating":"Игристые 12'24","rank":5,"photo":"https://static.tildacdn.com/stor6333-3933-4533-b435-616432383534/25585613.jpg","price":1890,"shop_links":[{"name":"Vino.ru","url":"https://vino.ru/avtorskoe-vino/mvz-rvi-s-zgu-dolina-dona-vyderzh-beloe-ekstra-bryut-ved-igr-sibirkovyy-0-75-2017/"}],"landing_url":"https://firstguide.ru/vedernikov-sibirkovyy-ekstra-bryut-2017"},{"title":"Золотая Балка Чёрный Принц Блан Де Нуар экстра брют 2019","brand":"Чёрный Принц","producer":"АО «Агрофирма Золотая Балка»","vintage":"2019","color":"Белое","sugar":"Экстра Брют","type":"Игристое","method":"классический","region":"Севастополь. Балаклава","grapes":["Пино нуар"],"rating":"Игристые 12'24","rank":6,"photo":"https://static.tildacdn.com/stor3765-3563-4636-a536-626231303261/82878614.jpg","price":5000,"shop_links":[{"name":"KrymWine","url":"https://krymwine.ru/catalog/igristye-vina/vino_kollektsionnoe_igristoe_ekstra_bryut_chyernyy_prints_blanc_de_noirs_2019.html"}],"landing_url":"https://firstguide.ru/zolotaya-balka-chernyy-prints-blan-de-nuar-ekstra-bryut-2019"},{"title":"Ведерниковъ Цимлянский Черный Брют Розе 2020","brand":"Ведерниковъ","producer":"ООО «Винодельня Ведерниковъ»","vintage":"2020","color":"Розовое","sugar":"Брют","type":"Игристое","method":"классический","region":"Долина Дона. Усть-Донецкий","grapes":["Цимлянский чёрный"],"rating":"Игристые 12'24","rank":7,"photo":"https://static.tildacdn.com/stor3230-6631-4165-b063-386363376138/81892241.jpg","price":1890,"shop_links":[{"name":"Vino.ru","url":"https://vino.ru/avtorskoe-vino/mvz-rvi-s-zgu-dolina-dona-vyderzh-rozovoe-bryut-ved-igr-tsimlyanskiy-chernyy-roze-0-75-2020/"}],"landing_url":"https://firstguide.ru/vedernikov-tsimlyanskiy-chernyy-bryut-roze-2020"},{"title":"Fanagoria Primum Alveus Brut 2017","brand":"Primum Alveus","producer":"ООО АПФ «Фанагория»","vintage":"2017","color":"Белое","sugar":"Брют","type":"Игристое","method":"классический","region":"Кубань. Таманский полуостров","grapes":["Менье","Пино нуар","Шардоне"],"rating":"Игристые 12'24","rank":8,"photo":"https://static.tildacdn.com/stor3263-3638-4339-b463-386633623661/57620242.jpg","price":2055,"shop_links":[{"name":"Fortwine","url":"https://fortwine.ru/product/igristoe-vino-fanagoria-primum-alveus-brut-aged-2017-0-75/"}],"landing_url":"https://firstguide.ru/fanagoria-primum-alveus-brut-2017"},{"title":"Cuvee de Vitmer Brut 2017","brand":"Cuvee de Vitmer","producer":"АО «Агрофирма Золотая Балка»","vintage":"2017","color":"Белое","sugar":"Брют","type":"Игристое","method":"классический","region":"Севастополь. Балаклава","grapes":["Пино нуар","Шардоне"],"rating":"Игристые 12'24","rank":9,"photo":"https://static.tildacdn.com/stor3335-3865-4739-b864-656539393666/74124459.jpg","price":3400,"shop_links":[{"name":"WineHelp","url":"https://winehelp2.ru/product/igristoe-vino-kyuve-de-vitmer-beloe-bryut-v-podarochnoy-korobke-2017-750-ml-12-5/"}],"landing_url":"https://firstguide.ru/kyuve-de-vitmer-brut-2017"},{"title":"Усадьба Дивноморское Блан де Нуар Экстра Брют 2020","brand":"Усадьба Дивноморское","producer":"ООО «Усадьба Дивноморское»","vintage":"2020","color":"Белое","sugar":"Экстра Брют","type":"Игристое","method":"классический","region":"Кубань. Геленджик","grapes":["Пино нуар"],"rating":"Игристые 12'24","rank":10,"photo":"https://static.tildacdn.com/stor3230-6234-4661-a661-326533656666/93809203.jpg","price":4305,"shop_links":[{"name":"AST","url":"https://ast.wine/catalog/product/usadba_divnomorskoe_blan_de_nuar_168661_42723/"}],"landing_url":"https://firstguide.ru/usadba-divnomorskoe-blan-de-nuar-ekstra-bryut-2020"},{"title":"Винодел & Сомелье Пино Нуар 2022","brand":"Винодел & Сомелье","producer":"ООО АПФ «Фанагория»","vintage":"2022","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Таманский полуостров","grapes":["Пино нуар"],"rating":"Пино Нуары 11'24","rank":1,"photo":"https://static.tildacdn.com/stor3635-3163-4336-b436-333930316333/52111096.jpg","price":2100,"shop_links":[{"name":"Luding","url":"https://luding.ru/collection/item/winemaker-sommelier-pinot-noir-kuban-tamanskiy-poluostrov-fanagoria---223794/"}],"landing_url":"https://firstguide.ru/vinodel-sommelier-pinot-noir-2022"},{"title":"Бельбек Пино Нуар 2020","brand":"Бельбек","producer":"ООО «Бельбек»","vintage":"2020","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Севастополь. Качинская долина","grapes":["Пино нуар"],"rating":"Пино Нуары 11'24","rank":2,"photo":"https://static.tildacdn.com/stor3133-3230-4634-b435-613761346134/21612218.jpg","price":1800,"shop_links":[{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/tihie-vina/esse-unplugged-ridicule-krasnoe-suhoe-vino-0-75-l/"},{"name":"WineStyle","url":"https://winestyle.ru/products/Esse-Unplugged-Ridicule.html"},{"name":"KrymWine","url":"https://krymwine.ru/catalog/vino/tikhie-vina/vino_tikhoe_krasnoe_sukhoe_zgu_krym_esse_ridicule_unplugged.html"}],"landing_url":"https://firstguide.ru/belbek-pinot-noir-2020"},{"title":"STN Пино Нуар Андрей Долингер 2020","brand":"Yaiyla","producer":"ООО «Яйла»","vintage":"2020","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Севастополь","grapes":["Пино нуар"],"rating":"Пино Нуары 11'24","rank":3,"photo":"https://static.tildacdn.com/stor3966-3735-4635-b330-333334326235/21581014.png","price":3199,"shop_links":[{"name":"Vino.ru","url":"https://vino.ru/avtorskoe-vino/yayla-rv-s-zgu-krym-sukhoe-krasnoe-stn-pino-nuar-0-75-2020/"}],"landing_url":"https://firstguide.ru/stn-pinot-noir-andrei-dolinger-2020"},{"title":"Шато Пино Классика Пино Нуар 2022","brand":"Chateau Pinot","producer":"ООО «Шато Пино»","vintage":"2022","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Геленджик","grapes":["Пино нуар"],"rating":"Пино Нуары 11'24","rank":4,"photo":"https://static.tildacdn.com/stor3734-6131-4066-b264-613833663332/69920462.jpg","price":800,"shop_links":[{"name":"АлкоПлаза","url":"https://www.alcoplaza.ru/Wine/vino-shato-pino-klassika-pino-nuar-075-krasnoe-suhoe"}],"landing_url":"https://firstguide.ru/chateau-pinot-klassika-pinot-noir-2022"},{"title":"Yaiyla Cosmos Pinot Noir 2020","brand":"Yaiyla","producer":"ООО «Яйла»","vintage":"2020","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Севастополь","grapes":["Пино нуар"],"rating":"Пино Нуары 11'24","rank":5,"photo":"https://static.tildacdn.com/stor3633-3131-4537-a535-343037383139/15826801.jpg","price":2850,"shop_links":[{"name":"WineStyle","url":"https://winestyle.ru/products/Yaiyla-Urban-Winery-Cosmos-Pinot-Noir.html"}],"landing_url":"https://firstguide.ru/yaiyla-cosmos-pinot-noir-2020"},{"title":"Pavel Shvets Pinot Noir 2022","brand":"Pavel Shvets","producer":"ООО «Уппа Винери»","vintage":"2022","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Севастополь. Балаклава","grapes":["Пино нуар"],"rating":"Пино Нуары 11'24","rank":6,"photo":"https://static.tildacdn.com/stor6338-6638-4239-a566-306163336161/59645095.png","price":4500,"shop_links":[{"name":"UPPA Winery","url":"https://uppawinery.ru/catalog/wine/pinot-noir-2022"}],"landing_url":"https://firstguide.ru/pavel-shvets-pinot-noir-2022"},{"title":"KD Пино Нуар 2020","brand":"КД","producer":"ИП Дзитоев К.","vintage":"2020","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Долина Терека","grapes":["Пино нуар"],"rating":"Пино Нуары 11'24","rank":7,"photo":"https://static.tildacdn.com/stor6263-3635-4934-a632-613035373135/92097440.jpg","price":3400,"shop_links":[{"name":"Decanter","url":"https://decanter.ru/product/kd-pinot-noir-2020-id247749"}],"landing_url":"https://firstguide.ru/kd-pinot-noir-2020"},{"title":"Шары Колдуна Кирпичи Прилетели 2022","brand":"Chateau Pinot","producer":"ООО «Шато Пино»","vintage":"2022","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Геленджик","grapes":["Пино нуар"],"rating":"Пино Нуары 11'24","rank":8,"photo":"https://static.tildacdn.com/stor3061-6664-4433-a533-313564373561/95125422.jpg","price":1500,"shop_links":[{"name":"Vino.ru","url":"https://vino.ru/avtorskoe-vino/shatopino-rv-zgu-kuban-novorossiysk-sukhoe-krasnoe-shato-pino-shary-kolduna-kirpichi-prileteli-0-75"}],"landing_url":"https://firstguide.ru/chateau-pinot-kirpichi-prileteli-2022"},{"title":"Raevskoe Renaissance Pinot Noir 2022","brand":"Raevskoe","producer":"ООО «Мысхако»","vintage":"2022","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Новороссийск","grapes":["Пино нуар"],"rating":"Пино Нуары 11'24","rank":9,"photo":"https://static.tildacdn.com/stor3535-3761-4665-b335-663732613834/47584802.jpg","price":1000,"shop_links":[{"name":"WineStyle","url":"https://winestyle.ru/products/Raevskoe-Renaissance-Pinot-Noir-2022.html"}],"landing_url":"https://firstguide.ru/raevskoe-renaissance-pinot-noir-2022"},{"title":"Mangup Pinot Noir 2019","brand":"Mangup","producer":"Mangup","vintage":"2019","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Севастополь. Балаклава","grapes":["Пино нуар"],"rating":"Пино Нуары 11'24","rank":10,"photo":"https://static.tildacdn.com/stor6437-6532-4364-a362-343631363263/15378623.jpg","price":1100,"shop_links":[{"name":"WineHelp","url":"https://winehelp2.ru/product/vino-usadba-mangup-pino-nuar-2019-750-ml/"}],"landing_url":"https://firstguide.ru/mangup-pinot-noir-2019"},{"title":"Усадьба Мезыбь Шишка Оранж 2020","brand":"Усадьба Мезыбь","producer":"ООО «Усадьба Мезыбь»","vintage":"2020","color":"Оранжевое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Геленджик","grapes":["Вионье","Шардоне"],"rating":"Оранжевые 09'24","rank":1,"photo":"https://static.tildacdn.com/stor6134-6565-4431-b936-373762643932/21427496.png","price":4490,"shop_links":[{"name":"SimpleWine","url":"https://simplewine.ru/catalog/product/shishka_oranzh_2020_075_149147/"}],"landing_url":"https://firstguide.ru/usadbamezibshishkaorange2020"},{"title":"Цимлянское Premium Orange 2021","brand":"Цимлянские вина","producer":"ООО «Цимлянские вина»","vintage":"2021","color":"Оранжевое","sugar":"Сухое","type":"Тихое","method":"","region":"Долина Дона. Цимлянский","grapes":["Антей магарачский","Первенец магарача","Ркацители"],"rating":"Оранжевые 09'24","rank":2,"photo":"https://static.tildacdn.com/stor6334-3163-4466-a330-383137336433/86869086.png","price":950,"shop_links":[{"name":"Цимлянские вина","url":"https://tsimlawines.ru/contact/"}],"landing_url":"https://firstguide.ru/tsimlyanskoe-premium-orange-2021"},{"title":"Усадьба Маркотх Мальвазия Оранж 2022","brand":"Усадьба Маркотх","producer":"Усадьба Маркотх","vintage":"2022","color":"Оранжевое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Геленджик","grapes":["Мальвазия"],"rating":"Оранжевые 09'24","rank":3,"photo":"https://static.tildacdn.com/stor3664-6166-4239-b463-303034643936/53734733.png","price":2490,"shop_links":[{"name":"SimpleWine","url":"https://simplewine.ru/catalog/product/malvaziya_oranzh_2022_075_149417/"}],"landing_url":"https://firstguide.ru/usadba-markoth-malvaziya-orange-2022"},{"title":"Виноградник Плато Кара-Тау Оранж 2021","brand":"Виноградник Плато Кара-Тау","producer":"Виноградник Плато Кара-Тау","vintage":"2021","color":"Оранжевое","sugar":"Сухое","type":"Тихое","method":"","region":"Севастополь","grapes":["Ркацители"],"rating":"Оранжевые 09'24","rank":4,"photo":"https://static.tildacdn.com/stor6362-6334-4663-b935-346330643436/92981941.png","price":1875,"shop_links":[{"name":"WineStyle","url":"https://winestyle.ru/products/Vineyard-Plateau-Kara-Tau-Orange-2021.html"}],"landing_url":"https://firstguide.ru/vinogradnik-plato-kara-tau-orange-2021"},{"title":"Жаков Неоранж 2023","brand":"Жаков","producer":"КФХ Жаков","vintage":"2023","color":"Оранжевое","sugar":"Сухое","type":"Тихое","method":"","region":"Крым","grapes":["Восторг"],"rating":"Оранжевые 09'24","rank":5,"photo":"https://static.tildacdn.com/stor3065-3364-4362-a533-326661323437/68977260.png","price":1150,"shop_links":[{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/tihie-vina/zhakov-neoranzh-oranzhevoe-suhoe-vino-0-75-l/"}],"landing_url":"https://firstguide.ru/zhakov-neorange-2023"},{"title":"Bogovich Rkatsiteli Orange 2021","brand":"Bogovich Wine & Vineyard","producer":"КФХ «Богович»","vintage":"2021","color":"Оранжевое","sugar":"Сухое","type":"Тихое","method":"","region":"Севастополь","grapes":["Ркацители"],"rating":"Оранжевые 09'24","rank":6,"photo":"https://static.tildacdn.com/stor3262-6237-4134-a165-393931663166/12801431.png","price":3500,"shop_links":[{"name":"Vino.ru","url":"https://vino.ru/avtorskoe-vino/vuv-vino-sukhoe-beloe-rkatsiteli-bogovich-0-75/"}],"landing_url":"https://firstguide.ru/bogovich-rkatsiteli-orange-2021"},{"title":"Усадьба Перовских Кокур Оранж 2022","brand":"Усадьба Перовских","producer":"ООО «Усадьба Перовских»","vintage":"2022","color":"Оранжевое","sugar":"Сухое","type":"Тихое","method":"","region":"Севастополь. Качинская долина","grapes":["Кокур белый"],"rating":"Оранжевые 09'24","rank":7,"photo":"https://static.tildacdn.com/stor6130-6461-4931-b962-333761323132/33057303.jpg","price":2700,"shop_links":[{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/tihie-vina/usadba-perovskih-kokur-oranzh-oranzhevoe-suhoe-vino-0-75-l/"}],"landing_url":"https://firstguide.ru/usadba-perovskikh-kokur-orange-2022"},{"title":"Pavel Shvets Gewurztraminer Amber 2022","brand":"Pavel Shvets","producer":"ООО «Уппа Винери»","vintage":"2022","color":"Оранжевое","sugar":"Сухое","type":"Тихое","method":"","region":"Севастополь. Балаклава","grapes":["Гевюрцтраминер"],"rating":"Оранжевые 09'24","rank":8,"photo":"https://static.tildacdn.com/stor6237-3732-4835-b061-393862616635/19387019.png","price":6020,"shop_links":[{"name":"UPPA Winery","url":"https://uppawinery.ru/catalog/wine/gewurztraminer-amber-2022"}],"landing_url":"https://firstguide.ru/pavel-shvets-gewurztraminer-amber-2022"},{"title":"Esse Muscat Orange Unplugged 2022","brand":"Esse","producer":"ООО «Сатера»","vintage":"2022","color":"Оранжевое","sugar":"Сухое","type":"Тихое","method":"","region":"Крым. Бахчисарай","grapes":["Мускат"],"rating":"Оранжевые 09'24","rank":9,"photo":"https://static.tildacdn.com/stor6332-3639-4762-a133-396435626633/18000793.png","price":2067,"shop_links":[{"name":"Luding","url":"https://luding.ru/collection/item/esse-unplugged-muscat-orange-crimea-satera--284345/"}],"landing_url":"https://firstguide.ru/esse-muscat-orange-unplugged-2022"},{"title":"Yaiyla Rkatsiteli Orange Blush 2021","brand":"Yaiyla","producer":"ООО «Яйла»","vintage":"2021","color":"Оранжевое","sugar":"Сухое","type":"Тихое","method":"","region":"Севастополь","grapes":["Ркацители"],"rating":"Оранжевые 09'24","rank":10,"photo":"https://static.tildacdn.com/stor3936-6439-4439-b333-373338636332/51235684.png","price":3000,"shop_links":[{"name":"MBG Wine","url":"https://mbg-store.ru/wine/18351/iaila-rkatsiteli-oranzh-blash"}],"landing_url":"https://firstguide.ru/yaiyla-rkatsiteli-orange-blush-2021"},{"title":"Галицкий и Галицкий Акация Шардоне Красная горка 2021","brand":"Галицкий и Галицкий","producer":"ООО «Галицкий и Галицкий»","vintage":"2021","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Семигорье","grapes":["Шардоне"],"rating":"Шардоне 07'24","rank":1,"photo":"https://static.tildacdn.com/stor3333-3164-4237-a437-663734303534/27379478.jpg","price":4700,"shop_links":[{"name":"WineHelp","url":"https://winehelp2.ru/product/vino-galitskiy-i-galitskiy-krasnaya-gorka-shardone-akatsiya-2021-750-ml-13-5/"},{"name":"SimpleWine","url":"https://simplewine.ru/catalog/product/shardone_krasnaya_gorka_akatsiya_2020_075_135101/"}],"landing_url":"https://firstguide.ru/galitskiy-i-galitskiy-akatsiya-shardone-krasnaya-gorka-2021"},{"title":"Chateau de Talu Chardonnay Reserve 2021","brand":"Chateau de Talu","producer":"Chateau de Talu","vintage":"2021","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Геленджик","grapes":["Шардоне"],"rating":"Шардоне 07'24","rank":2,"photo":"https://static.tildacdn.com/stor3731-3735-4231-a539-643564366639/43145195.png","price":2000,"shop_links":[{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/tihie-vina/shardone-rezerv-shato-de-talyu-beloe-suhoe-vino-0-75-l/"},{"name":"WineHelp","url":"https://winehelp2.ru/product/vino-chateau-de-talu-chardonnay-reserve-shato-de-talyu-shardone-rezerv-2019-750-ml/"},{"name":"Luding","url":"https://luding.ru/collection/item/chardonnay-reserve-kuban-gelendzhik-chateau-de-talu--283055/"}],"landing_url":"https://firstguide.ru/chateau-de-talu-chardonnay-reserve-2021"},{"title":"Penpalo Chardonnay 2022","brand":"Domaine Lipko","producer":"Domaine Lipko","vintage":"2022","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Севастополь. Балаклава","grapes":["Шардоне"],"rating":"Шардоне 07'24","rank":3,"photo":"https://static.tildacdn.com/stor3433-6530-4664-b031-313838646163/42957741.jpg","price":2400,"shop_links":[{"name":"WineHelp","url":"https://winehelp2.ru/product/vino-pen-palo-chardonnay-pen-palo-shardone-2018-750-ml/"},{"name":"WineStyle","url":"https://winestyle.ru/products/Domaine-Lipko-PenPalo-Shardonnay-2022.html"},{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/tihie-vina/shardone-penpalo-beloe-suhoe-vino-0-75-l/"}],"landing_url":"https://firstguide.ru/penpalo-chardonnay-2022"},{"title":"ZB Сердце требует объятий, а душа My Chardonnay 2023","brand":"ZB Wine","producer":"АО «Агрофирма Золотая Балка»","vintage":"2023","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Севастополь. Балаклава","grapes":["Шардоне"],"rating":"Шардоне 07'24","rank":4,"photo":"https://static.tildacdn.com/stor3864-6565-4230-b361-636564626164/75203396.jpg","price":650,"shop_links":[{"name":"WineStyle","url":"https://winestyle.ru/products/Zolotaya-Balka-ZB-Wine-Chardonnay.html"},{"name":"Ароматный мир","url":"https://amwine.ru/catalog/vino/zb_wine_my_chardonnay/"}],"landing_url":"https://firstguide.ru/zb-serdtse-trebuet-obyatiy-a-dusha-my-chardonnay-2023"},{"title":"Сикоры Шардоне 2022","brand":"Sikory","producer":"ООО Имение «Сикоры»","vintage":"2022","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Семигорье","grapes":["Шардоне"],"rating":"Шардоне 07'24","rank":5,"photo":"https://static.tildacdn.com/stor3639-3263-4330-a263-363138323066/11776278.jpg","price":1350,"shop_links":[{"name":"WineStyle","url":"https://winestyle.ru/products/Chardonnay-Sikory-2022.html"},{"name":"Азбука вкуса","url":"https://av.ru/i/1002048"},{"name":"KrymWine","url":"https://krymwine.ru/catalog/vino/tikhie-vina/vino_tikhoe_beloe_sukhoe_zgu_semigore_imenie_sikory_shardone.html"}],"landing_url":"https://firstguide.ru/sikory-shardone-2022"},{"title":"Golubitskoe Estate Chardonnay Reserve 2020","brand":"Golubitskoe Estate","producer":"ООО «Поместье Голубицкое»","vintage":"2020","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Таманский полуостров","grapes":["Шардоне"],"rating":"Шардоне 07'24","rank":6,"photo":"https://static.tildacdn.com/stor3364-3533-4639-b630-626139633761/41343938.jpg","price":1300,"shop_links":[{"name":"ВинЛаб","url":"https://www.winelab.ru/product/1019953"}],"landing_url":"https://firstguide.ru/golubitskoe-estate-chardonnay-reserve-2020"},{"title":"Галицкий и Галицкий Шардоне Красная горка 2020","brand":"Галицкий и Галицкий","producer":"ООО «Галицкий и Галицкий»","vintage":"2020","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Семигорье","grapes":["Шардоне"],"rating":"Шардоне 07'24","rank":7,"photo":"https://static.tildacdn.com/stor3837-3766-4533-a262-303635303737/33505807.jpg","price":3150,"shop_links":[{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/tihie-vina/shardone-krasnaya-gorka-beloe-suhoe-vino-0-75-l/"},{"name":"WineStyle","url":"https://winestyle.ru/wine/chardonnay/galitskiy-and-galitskiy/"},{"name":"SimpleWine","url":"https://simplewine.ru/catalog/product/shardone_krasnaya_gorka_075_145851/"}],"landing_url":"https://firstguide.ru/galitskiy-i-galitskiy-shardone-krasnaya-gorka-2020"},{"title":"Усадьба Маркотх Шардоне 2022","brand":"Геленджик","producer":"ООО «Геленджик»","vintage":"2022","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Геленджик","grapes":["Шардоне"],"rating":"Шардоне 07'24","rank":8,"photo":"https://static.tildacdn.com/stor3563-6439-4564-b433-653963383137/96087031.jpg","price":1500,"shop_links":[{"name":"Winemore","url":"https://winemore.ru/catalog/vino/vino_usadba_markoth_shardone_2021_g_075_l_sw/"},{"name":"WineHelp","url":"https://winehelp2.ru/product/vino-usadba-markotkh-chardonnay-usadyba-markoth--shardone-2015--750--ml/"},{"name":"SimpleWine","url":"https://simplewine.ru/catalog/product/usadba_markotkh_chardonnay_2021_075_138690/"}],"landing_url":"https://firstguide.ru/usadba-markoth-shardone-2022"},{"title":"Rem Akchurin Chardonnay 2022","brand":"Рем Акчурин","producer":"ИП Акчурин Р.А.","vintage":"2022","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Севастополь. Балаклава","grapes":["Шардоне"],"rating":"Шардоне 07'24","rank":9,"photo":"https://static.tildacdn.com/stor6136-3936-4433-a266-323938303032/99054035.jpg","price":1800,"shop_links":[{"name":"Winemore","url":"https://winemore.ru/catalog/vino/vino_rem_akchurin_chardonnay_075_l_ld/"},{"name":"WineHelp","url":"https://winehelp2.ru/product/vino-rem-akchurin-shardone-rezerv-750-ml/"},{"name":"WineStyle","url":"https://winestyle.ru/products/Rem-Akchurin-Chardonnay-2021.html"}],"landing_url":"https://firstguide.ru/rem-akchurin-shardone-2022"},{"title":"Loco Cimbali Repin Barrique 2020","brand":"Loco Cimbali","producer":"АО «Агрофирма Золотая Балка»","vintage":"2020","color":"Белое","sugar":"Сухое","type":"Тихое","method":"","region":"Севастополь. Балаклава","grapes":["Шардоне"],"rating":"Шардоне 07'24","rank":10,"photo":"https://static.tildacdn.com/stor3432-3138-4137-a230-376436613039/82424921.jpg","price":2000,"shop_links":[{"name":"SimpleWine","url":"https://simplewine.ru/catalog/product/loco_cimbali_white_2020_075_143264/"}],"landing_url":"https://firstguide.ru/loco-cimbali-repin-barrique-2020"},{"title":"Гусевъ Пет-Нат Неретинский 2023","brand":"Семейная винодельня Гусевъ","producer":"КФХ Гусев Д.Э.","vintage":"2023","color":"Розовое","sugar":"Брют","type":"Игристое","method":"ансестраль","region":"Нижняя Волга","grapes":["Неретинский"],"rating":"Петнаты 05'24","rank":1,"photo":"https://static.tildacdn.com/stor3834-6136-4637-b234-613032353365/62715599.jpg","price":2088,"shop_links":[{"name":"АлкоПлаза","url":"https://www.alcoplaza.ru/sparkling-wine/vino-igristoe-pet-nat-neretinskij-2023-god-075-bryut-rozovoe"}],"landing_url":"https://firstguide.ru/gusev-pet-nat-neretinskij-2023"},{"title":"Реликта Петнат 2022","brand":"Реликта","producer":"ООО «Реликта»","vintage":"2022","color":"Розовое","sugar":"Экстра Брют","type":"Игристое","method":"","region":"Кубань. Анапа","grapes":["Антей магарачский"],"rating":"Петнаты 05'24","rank":2,"photo":"https://static.tildacdn.com/stor6431-3537-4563-a137-306239326366/12576505.jpg","price":1500,"shop_links":[{"name":"Vino.ru","url":"https://vino.ru/avtorskoe-vino/kfkh-tsvetkov-vino-igristoe-ekstra-bryut-rozovoe-petnat-relikta-0-75/"},{"name":"WineHelp","url":"https://winehelp2.ru/product/igristoe-vino-relikta-petnat-kfkh-tsvetkov-rozovoe-ekstra-bryut-750-ml-11-/"},{"name":"АлкоПлаза","url":"https://www.alcoplaza.ru/sparkling-wine/vino-igristoe-petnat-relikta-075-rozovoe-ekstra-bryut"}],"landing_url":"https://firstguide.ru/relikta-petnat-2022"},{"title":"А. Гордиенко &amp; М. Николаев Петнат из Совиньона 2022","brand":"Лефкадия","producer":"ООО «Вина Лефкадии»","vintage":"2022","color":"Белое","sugar":"Экстра Брют","type":"Игристое","method":"","region":"Кубань. Крымск","grapes":["Совиньон блан"],"rating":"Петнаты 05'24","rank":3,"photo":"https://static.tildacdn.com/stor3037-3331-4938-a631-353161346166/35017429.jpg","price":1350,"shop_links":[{"name":"WineHelp","url":"https://winehelp2.ru/product/igristoe-vino-a-gordienko-m-nikolaev-petnat-sovinon-2022-750-ml/"}],"landing_url":"https://firstguide.ru/a-gordienko-m-nikolaev-petnat-iz-sovinona-2022"},{"title":"Ведерниковъ ПетНат Цимлянский чёрный Розовое Брют 2022","brand":"Ведерниковъ","producer":"ООО «Винодельня Ведерниковъ»","vintage":"2022","color":"Розовое","sugar":"Брют","type":"Игристое","method":"классический","region":"Долина Дона. Усть-Донецкий","grapes":["Цимлянский чёрный"],"rating":"Петнаты 05'24","rank":4,"photo":"https://static.tildacdn.com/stor3330-6564-4763-b233-396539353666/59028844.jpg","price":1900,"shop_links":[{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/igristye-vina/vedernikovskoe-petnat-roze-bryut-rozovoe-igristoe-vino-0-75-l/"}],"landing_url":"https://firstguide.ru/vedernikov-petnat-cimlyanskij-chyornyj-rozovoe-bryut-2022"},{"title":"Гусевъ Пет-Нат Фиолетовый ранний 2023","brand":"Семейная винодельня Гусевъ","producer":"КФХ Гусев Д.Э.","vintage":"2023","color":"Розовое","sugar":"Брют","type":"Игристое","method":"ансестраль","region":"Нижняя Волга","grapes":["Фиолетовый ранний"],"rating":"Петнаты 05'24","rank":5,"photo":"https://static.tildacdn.com/stor6533-3435-4164-b366-663835643133/55734375.jpg","price":2100,"shop_links":[{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/igristye-vina/cimlyanskiy-chernyy-vedernikovskoe-bryut-rozovoe-igristoe-vino-0-75-l/"},{"name":"Decanter","url":"https://decanter.ru/product/vedernikov-tsimlyansky-cherny-brut-rose-2020-id244414"},{"name":"WineStyle","url":"https://winestyle.ru/products/Winery-Vedernikov-Tsimlyansky-Cherny-Brut-Rose-2020.html"},{"name":"Vino.ru","url":"https://vino.ru/avtorskoe-vino/mvz-rvi-s-zgu-dolina-dona-vyderzh-rozovoe-bryut-ved-igr-tsimlyanskiy-chernyy-roze-0-75-2020/"}],"landing_url":""},{"title":"Ведерниковъ ПетНат Рислинг Белое Брют","brand":"Ведерниковъ","producer":"ООО «Винодельня Ведерниковъ»","vintage":"2022","color":"Белое","sugar":"Брют","type":"Игристое","method":"классический","region":"Долина Дона. Усть-Донецкий","grapes":["Рислинг"],"rating":"Петнаты 05'24","rank":6,"photo":"https://static.tildacdn.com/stor3632-3433-4563-a263-373236306631/19410003.jpg","price":1960,"shop_links":[{"name":"WineStyle","url":"https://winestyle.ru/products/Winery-Vedernikov-Pet-Nat-Riesling-White-Brut-2022.html"},{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/igristye-vina/vedernikovskoe-petnat-risling-bryut-beloe-igristoe-vino-0-75-l/"}],"landing_url":"https://firstguide.ru/vedernikov-petnat-risling-beloe-bryut"},{"title":"Саркел Петнат Сибирьковый 2022","brand":"Усадьба Саркел","producer":"ООО «Усадьба Саркел»","vintage":"2022","color":"Белое","sugar":"Экстра Брют","type":"Игристое","method":"","region":"Долина Дона. Цимлянский","grapes":["Сибирьковый"],"rating":"Петнаты 05'24","rank":7,"photo":"https://static.tildacdn.com/stor3866-6365-4766-b261-333432666361/20581062.jpg","price":1600,"shop_links":[{"name":"WineHelp","url":"https://winehelp2.ru/product/igristoe-vino-usadba-sarkel-petnat-sibirkovyy-beloe-ekstra-bryut-2022-750-ml-11-/"},{"name":"АлкоПлаза","url":"https://www.alcoplaza.ru/sparkling-wine/vino-igristoe-petnat-sibirkovyj-2022-god-075-beloe-ekstra-bryut-gkfh-gubin"},{"name":"Хорошая компания","url":"https://xorwine.ru/catalog/vino/usadba_sarkel_petnat_sibirkovyy_/"}],"landing_url":"https://firstguide.ru/sarkel-petnat-sibirkovyj-2022"},{"title":"Denisov Пет-Нат Цитрон-Рислинг 2022","brand":"Denisov Winery","producer":"Винодельня Денисов","vintage":"2022","color":"Белое","sugar":"Экстра Брют","type":"Игристое","method":"ансестраль","region":"Самарская область","grapes":["Рислинг","Цитронный магарача"],"rating":"Петнаты 05'24","rank":8,"photo":"https://static.tildacdn.com/stor3863-6236-4361-a339-643432323139/59959583.jpg","price":1500,"shop_links":[{"name":"WineStyle","url":"https://winestyle.ru/products/Denisov-Winery-Pet-Nat-Citron-Riesling-Extra-Brut-2022.html"},{"name":"WineHelp","url":"https://winehelp2.ru/product/vino-denisov-pet-nat-risling-tsitron-2022-750-ml-12-5-/"}],"landing_url":"https://firstguide.ru/denisov-pet-nat-citron-risling-2022"},{"title":"Villa di Alma Pinot Gris Петнат 2022","brand":"Villa di Alma","producer":"Villa di Alma","vintage":"2022","color":"Розовое","sugar":"Брют","type":"Игристое","method":"","region":"Крым. Бахчисарай","grapes":["Пино гри"],"rating":"Петнаты 05'24","rank":9,"photo":"https://static.tildacdn.com/stor6662-6163-4339-b331-613462616230/35055157.jpg","price":1600,"shop_links":[{"name":"Fortwine","url":"https://fortwine.ru/product/igristoe-vino-villa-di-alma-pinot-gris-petnat-2022-0-75/"},{"name":"Моя Винотека","url":"https://moivinoteki.ru/item/villa-di-alma-pinot-gris-petnat.htm"}],"landing_url":"https://firstguide.ru/villa-di-alma-pinot-gris-petnat-2022"},{"title":"Гусевъ Пет-Нат Мускат Оттонель 2023","brand":"Семейная винодельня Гусевъ","producer":"КФХ Гусев Д.Э.","vintage":"2023","color":"Белое","sugar":"Брют","type":"Тихое","method":"ансестраль","region":"Нижняя Волга","grapes":["Мускат оттонель"],"rating":"Петнаты 05'24","rank":10,"photo":"https://static.tildacdn.com/stor3633-6536-4232-a665-343966663030/50800985.jpg","price":2520,"shop_links":[{"name":"АлкоПлаза","url":"https://www.alcoplaza.ru/sparkling-wine/vino-igristoe-pet-nat-muskat-ottonel-2022-god-075-bryut-beloe"}],"landing_url":"https://firstguide.ru/gusev-pet-nat-muskat-ottonel-2023"},{"title":"Esse Unplugged Ridicule 2022","brand":"Esse","producer":"ООО «Сатера»","vintage":"2022","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Крым. Бахчисарай","grapes":["Вионье","Сира"],"rating":"Дачные красные 04'24","rank":1,"photo":"https://static.tildacdn.com/stor6534-3131-4966-b830-643637396663/29253522.jpg","price":2500,"shop_links":[{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/tihie-vina/esse-unplugged-ridicule-krasnoe-suhoe-vino-0-75-l/"},{"name":"WineStyle","url":"https://winestyle.ru/products/Esse-Unplugged-Ridicule.html"},{"name":"KrymWine","url":"https://krymwine.ru/catalog/vino/tikhie-vina/vino_tikhoe_krasnoe_sukhoe_zgu_krym_esse_ridicule_unplugged.html"}],"landing_url":"https://firstguide.ru/esseunpluggedridicule2022"},{"title":"Chateau Pinot Гравитация Каберне фран/Каберне совиньон 2022","brand":"Chateau Pinot","producer":"ООО «Шато Пино»","vintage":"2022","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Геленджик","grapes":["Каберне совиньон","Каберне фран"],"rating":"Дачные красные 04'24","rank":2,"photo":"https://static.tildacdn.com/stor3466-3166-4236-b836-633935353063/67570851.jpg","price":1500,"shop_links":[{"name":"AST","url":"https://b2c.ast-inter.ru/catalog/product/shato_pino_gravitatsiya_kaberne_fran_kaberne_sovinon__4680074270293_30288/"},{"name":"Перекрёсток","url":"https://www.perekrestok.ru/cat/2/p/vino-chateau-pinot-gravitacia-kaberne-fran-kaberne-sovinon-krasnoe-suhoe-750ml-4068686"},{"name":"WineStyle","url":"https://winestyle.ru/products/Gravitatsiya-Cabernet-Franc-Cabernet-Sauvignon.html"}],"landing_url":"https://firstguide.ru/chateau-pinot-gravitaciya-2022"},{"title":"Gunko Winery Мерло 2020","brand":"Gunko Winery","producer":"ООО «Винодельня Гунько»","vintage":"2020","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Анапа","grapes":["Мерло"],"rating":"Дачные красные 04'24","rank":3,"photo":"https://static.tildacdn.com/stor3435-6465-4361-b765-333636646434/31591148.jpg","price":2350,"shop_links":[{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/tihie-vina/merlo-gunko-vayneri-krasnoe-suhoe-vino-0-75-l/"},{"name":"WineStyle","url":"https://winestyle.ru/products/Gunko-Winery-Merlot-2021.html"},{"name":"KrymWine","url":"https://krymwine.ru/catalog/vino/tikhie-vina/vino-zgu-kuban-sukhoe-krasnoe-merlo-gunko.html"}],"landing_url":"https://firstguide.ru/gunko-winery-merlo-2020"},{"title":"Узунов Нрав 2021","brand":"Узунов","producer":"КФХ Узунова Я.А.","vintage":"2021","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Анапа","grapes":["Каберне совиньон","Красностоп золотовский","Саперави"],"rating":"Дачные красные 04'24","rank":4,"photo":"https://static.tildacdn.com/stor3232-3862-4737-b333-323430333238/53961787.jpg","price":1411,"shop_links":[{"name":"Fortwine","url":"https://fortwine.ru/product/vino-winery-uzunov-nrav-2021-0-75/"},{"name":"KrymWine","url":"https://krymwine.ru/catalog/vino/tikhie-vina/vino_tikhoe_krasnoe_sukhoe_uzunov_nrav.html"}],"landing_url":"https://firstguide.ru/uzunov-nrav-2021"},{"title":"Chateau Tamagne Rouge Красностоп-Анчелотта 2022","brand":"Chateau Tamagne","producer":"ООО «Кубань-Вино»","vintage":"2022","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Таманский полуостров","grapes":["Анчелотта","Красностоп анапский"],"rating":"Дачные красные 04'24","rank":5,"photo":"https://static.tildacdn.com/stor3135-3162-4131-b336-396638323437/42464530.jpg","price":600,"shop_links":[{"name":"Перекрёсток","url":"https://www.perekrestok.ru/cat/2/p/vino-chateau-tamagne-krasnostop-ancelotta-krasnoe-suhoe-750ml-3974461"}],"landing_url":"https://firstguide.ru/chateau-tamagne-rouge-krasnostop-anchelotta-2022"},{"title":"Шумринка Семисам Красное 2022","brand":"Шумринка","producer":"ООО «Шумринка»","vintage":"2022","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Крымск","grapes":["Каберне совиньон","Мальбек","Марселан","Мерло","Саперави"],"rating":"Дачные красные 04'24","rank":6,"photo":"https://static.tildacdn.com/stor3630-3364-4833-a461-396237663237/10672996.jpg","price":1090,"shop_links":[{"name":"SimpleWine","url":"https://simplewine.ru/catalog/product/semisam_krasnoe_2022_075_145151/"},{"name":"METRO","url":"https://online.metro-cc.ru/products/075l-vino-shumrinka-semisam-kr-sh-225283"},{"name":"WineStyle","url":"https://winestyle.ru/products/Semisam-Red-Dry-2017.html"}],"landing_url":"https://firstguide.ru/shumrinka-semisam-2022"},{"title":"Собер Баш Трезвая голова Каберне фран/Красностоп 2022","brand":"Собер Баш","producer":"ООО «Собер-Баш»","vintage":"2022","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань","grapes":["Каберне фран","Красностоп золотовский"],"rating":"Дачные красные 04'24","rank":7,"photo":"https://static.tildacdn.com/stor3961-6539-4739-b866-356531656662/77776907.jpg","price":1300,"shop_links":[{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/tihie-vina/trezvaya-golova-kaberne-sovinon-kaberne-fran-krasnoe-suhoe-vino-0-75-l/"},{"name":"WineStyle","url":"https://winestyle.ru/products/Sober-Head-Cabernet-Franc-Krasnostop-2022.html"}],"landing_url":"https://firstguide.ru/sober-bash-trezvaya-golova-kaberne-fran-krasnostop-2022"},{"title":"Cru Lermont Рубиновый магарача 2020","brand":"Cru Lermont","producer":"ООО АПФ «Фанагория»","vintage":"2020","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Таманский полуостров","grapes":["Рубиновый магарача"],"rating":"Дачные красные 04'24","rank":8,"photo":"https://static.tildacdn.com/stor3237-3638-4566-b461-373062636133/70226143.jpg","price":900,"shop_links":[{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/tihie-vina/fanagoriya-kryu-lermont-rubinovyy-magaracha-krasnoe-suhoe-vino-0-75-l/"},{"name":"WineHelp","url":"https://winehelp2.ru/product/vino-fanagoriya-kryu-lermont-rubinovyy-magaracha-750-ml/"}],"landing_url":"https://firstguide.ru/cru-lermont-rubinovyj-magaracha-2020"},{"title":"Loco Cimbali Repin Red Barrique 2020","brand":"Loco Cimbali","producer":"АО «Агрофирма Золотая Балка»","vintage":"2020","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Севастополь. Балаклава","grapes":["Бастардо магарачский","Мерло","Саперави"],"rating":"Дачные красные 04'24","rank":9,"photo":"https://static.tildacdn.com/stor3264-6262-4166-b938-303531656532/95364853.jpg","price":2400,"shop_links":[{"name":"SimpleWine","url":"https://simplewine.ru/catalog/product/loco_cimbali_red_2020_075_146142/"},{"name":"WineStyle","url":"https://winestyle.ru/products/Loco-Cimbali-Red-2020.html"}],"landing_url":"https://firstguide.ru/loco-cimbali-repin-red-barrique-2020"},{"title":"Усадьба Перовских Пино Нуар 2020","brand":"Усадьба Перовских","producer":"ООО «Усадьба Перовских»","vintage":"2020","color":"Красное","sugar":"Сухое","type":"Тихое","method":"","region":"Севастополь. Качинская долина","grapes":["Пино нуар"],"rating":"Дачные красные 04'24","rank":10,"photo":"https://static.tildacdn.com/stor3962-3464-4365-b964-336364316566/81191181.jpg","price":1750,"shop_links":[{"name":"MBG Wine","url":"https://mbg-store.ru/wine/19149/pino-nuar-tz-usadba-perovskikh"},{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/tihie-vina/pino-nuar-usadba-perovskih-krasnoe-suhoe-vino-0-75-l/"}],"landing_url":"https://firstguide.ru/usadba-perovskih-pino-nuar-2020"},{"title":"Fanagoria Rose Cabernet Franc 2022","brand":"Fanagoria","producer":"ООО АПФ «Фанагория»","vintage":"2022","color":"Розовое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Таманский полуостров","grapes":["Каберне фран"],"rating":"Тихие розовые 02'24","rank":1,"photo":"https://static.tildacdn.com/stor6336-3965-4261-b836-663539373639/66619664.jpg","price":850,"shop_links":[{"name":"Fortwine","url":"https://fortwine.ru/product/vino-fanagoria-cabernet-fran-rose-2022-0-75/"},{"name":"WineStyle","url":"https://winestyle.ru/products/Fanagoria-Rose-Cabernet-Franc-2022.html"},{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/tihie-vina/fanagoriya-roze-kaberne-fran-rozovoe-suhoe-vino-0-75-l/"}],"landing_url":"https://firstguide.ru/fanagoria-rose-cabernet-franc-2022"},{"title":"Криница Syracuse 2021","brand":"Криница","producer":"ООО «Винодельня Криница»","vintage":"2021","color":"Розовое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Геленджик","grapes":["Каберне совиньон","Каберне фран","Сира"],"rating":"Тихие розовые 02'24","rank":2,"photo":"https://static.tildacdn.com/stor3630-6230-4561-b461-613630626231/45105392.jpg","price":1570,"shop_links":[{"name":"AST","url":"https://b2c.ast-inter.ru/catalog/product/vinodelnya_krinitsa_syracuse_4670150000074_35661/"},{"name":"WineStyle","url":"https://winestyle.ru/products/Krinica-Syracuse-2021.html"},{"name":"Decanter","url":"https://decanter.ru/product/krinitsa-syracuse-2021-id231337"}],"landing_url":"https://firstguide.ru/krinica-syracuse-2021"},{"title":"Усадьба Дивноморское Вторая Линия Солист 2021","brand":"Усадьба Дивноморское","producer":"ООО «Усадьба Дивноморское»","vintage":"2021","color":"Розовое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Геленджик","grapes":["Марселан"],"rating":"Тихие розовые 02'24","rank":3,"photo":"https://static.tildacdn.com/stor6539-6265-4164-b332-646164356538/83105578.jpg","price":1350,"shop_links":[{"name":"AST","url":"https://b2c.ast-inter.ru/catalog/product/usadba_divnomorskoe_terruar_vtoraya_liniya_solist_4610030201481_36135/"},{"name":"Decanter","url":"https://decanter.ru/product/usadba-divnomorskoe-vtoraya-liniya-solist-2022-id246000"},{"name":"WineStyle","url":"https://winestyle.ru/products/Usadba-Divnomorskoe-Vtoraya-Liniya-Solist-2022.html"}],"landing_url":"https://firstguide.ru/usadba-divnomorskoe-vtoraya-liniya-solist-2021"},{"title":"Ведерниковъ Красностоп Золотовский Розе 2022","brand":"Ведерниковъ","producer":"ООО «Винодельня Ведерниковъ»","vintage":"2022","color":"Розовое","sugar":"Сухое","type":"Тихое","method":"","region":"Долина Дона. Усть-Донецкий","grapes":["Красностоп золотовский"],"rating":"Тихие розовые 02'24","rank":4,"photo":"https://static.tildacdn.com/stor3839-3664-4662-b466-613630623536/32610329.jpg","price":3500,"shop_links":[{"name":"Абрау-Дюрсо","url":"https://abraudurso-studio.ru/catalog/tikhie-vina/mvz-vino-zgu-dolina-dona-vedernikovskoe-sukhoe-rozovoe-krasnostop-roze-0-75-2022/"},{"name":"WineStyle","url":"https://winestyle.ru/products/Winery-Vedernikov-Krasnostop-Zolotovskiy-Rose-2022.html"},{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/tihie-vina/vinodelnya-vedernikov-krasnostop-roze-rozovoe-suhoe-vino-0-75-l/"},{"name":"Vino.ru","url":"https://vino.ru/avtorskoe-vino/mvz-vino-zgu-dolina-dona-vedernikovskoe-sukhoe-rozovoe-krasnostop-roze-0-75-2022/"}],"landing_url":"https://firstguide.ru/vedernikov-krasnostop-zolotovskij-roze-2022"},{"title":"Raevskoe Genesis Rose 2021","brand":"Raevskoe","producer":"ООО «Винное хозяйство Раевское»","vintage":"2021","color":"Розовое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Новороссийск","grapes":["Темпранильо"],"rating":"Тихие розовые 02'24","rank":5,"photo":"https://static.tildacdn.com/stor3666-6562-4138-b665-386663376533/32112866.jpg","price":1900,"shop_links":[{"name":"WineStyle","url":"https://winestyle.ru/products/Raevskoe-Genesis-Rose.html"},{"name":"WineHelp","url":"https://winehelp2.ru/product/vino-raevskoe-genezis-rozovoe-sukhoe-750-ml/"}],"landing_url":"https://firstguide.ru/raevskoe-genesis-rose-2021"},{"title":"Belmas Katya 2022","brand":"Belmas","producer":"ООО «Винодельня Бельмас»","vintage":"2022","color":"Розовое","sugar":"Сухое","type":"Тихое","method":"","region":"Севастополь. Балаклава","grapes":["Мальбек"],"rating":"Тихие розовые 02'24","rank":6,"photo":"https://static.tildacdn.com/stor6364-3066-4665-b262-393530623030/22849163.jpg","price":2500,"shop_links":[{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/tihie-vina/belmas-katya-roze-rozovoe-suhoe-vino-0-75-l/"},{"name":"Vino.ru","url":"https://vino.ru/avtorskoe-vino/vuv-vino-sukhoe-rozovoe-malbek-belmas-0-75/"}],"landing_url":"https://firstguide.ru/belmas-katya-2022"},{"title":"Rose de Gai-Kodzor Cuvee Prestige 2022","brand":"Гай-Кодзор","producer":"ООО «Гай-Кодзор»","vintage":"2022","color":"Розовое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Анапа","grapes":["Гренаш","Мурведр","Сира"],"rating":"Тихие розовые 02'24","rank":7,"photo":"https://static.tildacdn.com/stor6366-3431-4561-b061-383137303332/83970272.jpg","price":1919,"shop_links":[{"name":"Галерея Градусов","url":"https://www.cigarpro.ru/drinks/wine/russian-wines/gai-kodzor/gai-kodzor-cuvee-prestige-750-ml/"},{"name":"АлкоПлаза","url":"https://www.alcoplaza.ru/Wine/vino-roze-de-gaj-kodzor-kyuve-prestizh-075-suhoe-rozovoe"}],"landing_url":"https://firstguide.ru/rose-de-gai-kodzor-cuvee-prestige-2022"},{"title":"Oleg Repin Rose 2022","brand":"Oleg Repin","producer":"Олег Репин / ООО «Сатера»","vintage":"2022","color":"Розовое","sugar":"Сухое","type":"Тихое","method":"","region":"Севастополь. Балаклава","grapes":["Гренаш","Мурведр","Сира"],"rating":"Тихие розовые 02'24","rank":8,"photo":"https://static.tildacdn.com/stor3931-3665-4562-a230-316364393761/90815312.png","price":3350,"shop_links":[{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/tihie-vina/oleg-repin-roze-rozovoe-suhoe-vino-0-75-l/"},{"name":"KrymWine","url":"https://krymwine.ru/catalog/vino/tikhie-vina/vino_tikhoe_rozovoe_sukhoe_oleg_repin_rose.html"},{"name":"WineHelp","url":"https://winehelp2.ru/product/vino-repin-oleg-roze-2022-750-ml-12-5-/"}],"landing_url":"https://firstguide.ru/oleg-repin-rose-2022"},{"title":"Rose de Gai-Kodzor Elegance 2022","brand":"Гай-Кодзор","producer":"ООО «Гай-Кодзор»","vintage":"2022","color":"Розовое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Анапа","grapes":["Гренаш","Сира"],"rating":"Тихие розовые 02'24","rank":9,"photo":"https://static.tildacdn.com/stor3930-3232-4263-b635-353863636565/58319177.jpg","price":1470,"shop_links":[{"name":"KrymWine","url":"https://krymwine.ru/catalog/vino/tikhie-vina/vino_tikhoe_rozovoe_sukhoe_gay_kodzor_elegans.html"},{"name":"АлкоПлаза","url":"https://www.alcoplaza.ru/Wine/vino-roze-de-kaj-godzor-elegans-075-rozovoe-suhoe"}],"landing_url":"https://firstguide.ru/rose-de-gai-kodzor-elegance-2022"},{"title":"Шумринка Спелая роза 2021","brand":"Шумринка","producer":"ООО «Шумринка»","vintage":"2021","color":"Розовое","sugar":"Сухое","type":"Тихое","method":"","region":"Кубань. Крымск","grapes":["Мальбек","Мерло"],"rating":"Тихие розовые 02'24","rank":10,"photo":"https://static.tildacdn.com/stor3538-3138-4432-a137-623562666630/45563051.jpg","price":1140,"shop_links":[{"name":"SimpleWine","url":"https://simplewine.ru/catalog/product/spelaya_roza_2021_075_144858/"},{"name":"WineStyle","url":"https://winestyle.ru/products/Mellow-Rose-Rose-Dry-2021.html"},{"name":"KrymWine","url":"https://krymwine.ru/catalog/vino/tikhie-vina/vino_tikhoe_rozovoe_sukhoe_zgu_kuban_shumrinka_spelaya_roza.html"}],"landing_url":"https://firstguide.ru/shumrinka-spelaya-roza-2021"},{"title":"Magnatum Cuvee M Brut Rose 2020","brand":"Magnatum","producer":"ООО «Вина Лефкадии»","vintage":"2020","color":"Розовое","sugar":"Экстра Брют","type":"Игристое","method":"классический","region":"Кубань. Крымск","grapes":["Пино нуар","Шардоне"],"rating":"Игристые розовые 02'24","rank":1,"photo":"https://static.tildacdn.com/stor3265-6663-4534-b365-663635623964/80964152.jpg","price":1650,"shop_links":[{"name":"SimpleWine","url":"https://simplewine.ru/catalog/product/rossiyskoe_igristoe_vino_s_zashchishchennym_geograficheskim_ukazaniem_kuban_krymsk_vyderzhannoe_bryu_2020_075_144911/"},{"name":"WineStyle","url":"https://winestyle.ru/products/Magnatum-Brut-Rose-Cuvee-M.html"}],"landing_url":"https://firstguide.ru/magnatum-cuvee-m-brut-rose-2020"},{"title":"Ведерниковъ Цимлянский Чёрный Розе Брют 2020","brand":"Ведерниковъ","producer":"ООО «Винодельня Ведерниковъ»","vintage":"2020","color":"Розовое","sugar":"Брют","type":"Игристое","method":"классический","region":"Долина Дона. Усть-Донецкий","grapes":["Цимлянский чёрный"],"rating":"Игристые розовые 02'24","rank":2,"photo":"https://static.tildacdn.com/stor6233-6664-4031-b136-343636343463/27795841.jpg","price":1950,"shop_links":[{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/igristye-vina/cimlyanskiy-chernyy-vedernikovskoe-bryut-rozovoe-igristoe-vino-0-75-l/"},{"name":"Decanter","url":"https://decanter.ru/product/vedernikov-tsimlyansky-cherny-brut-rose-2020-id244414"},{"name":"WineStyle","url":"https://winestyle.ru/products/Winery-Vedernikov-Tsimlyansky-Cherny-Brut-Rose-2020.html"},{"name":"Vino.ru","url":"https://vino.ru/avtorskoe-vino/mvz-rvi-s-zgu-dolina-dona-vyderzh-rozovoe-bryut-ved-igr-tsimlyanskiy-chernyy-roze-0-75-2020/"}],"landing_url":"https://firstguide.ru/vedernikov-tsimlyanskiy-chernyy-rose-brut-2020"},{"title":"Абрау-Дюрсо Империал Brut Rose 2021","brand":"Imperial","producer":"ООО «Абрау-Дюрсо»","vintage":"2021","color":"Розовое","sugar":"Брют","type":"Игристое","method":"классический","region":"Кубань. Семигорье","grapes":["Пино нуар"],"rating":"Игристые розовые 02'24","rank":3,"photo":"https://static.tildacdn.com/stor3636-6635-4934-a462-666630373638/96395547.png","price":3440,"shop_links":[{"name":"Абрау-Дюрсо","url":"https://abraudurso-studio.ru/catalog/igristye-vina/rvi-s-zgu-kuban-vyderzh-bryut-rozovoe-imperial-kyuve-0-75-2020/"},{"name":"AST","url":"https://b2c.ast-inter.ru/catalog/product/abrau_dyurso_imperial_brut_rose_4607026340705_30675/"},{"name":"WineStyle","url":"https://winestyle.ru/products/Abrau-Durso-Imperial-Brut-Rose.html"},{"name":"Vino.ru","url":"https://vino.ru/catalog-partners/rvi-s-zgu-kuban-vyderzh-bryut-rozovoe-imperial-kyuve-0-75-2020/"}],"landing_url":"https://firstguide.ru/abrau-durso-imperial-brut-rose-2021"},{"title":"Темелион Розе Брют 2019","brand":"Темелион","producer":"ООО «Вина Лефкадии»","vintage":"2019","color":"Розовое","sugar":"Брют","type":"Игристое","method":"классический","region":"Кубань. Крымск","grapes":["Пино нуар","Шардоне"],"rating":"Игристые розовые 02'24","rank":4,"photo":"https://static.tildacdn.com/stor3962-3666-4465-a161-393061376663/86327050.jpg","price":2730,"shop_links":[{"name":"WineHelp","url":"https://winehelp2.ru/product/vino-igristoe-lefkadiya-temelion-vintazh-roze-2019-750-ml-12-/"}],"landing_url":"https://firstguide.ru/temelion-roze-bryut-2019"},{"title":"Цимлянское Выдержанное Розе Экстра Брют 2019","brand":"Цимлянские вина","producer":"ООО «Цимлянские вина»","vintage":"2019","color":"Розовое","sugar":"Экстра Брют","type":"Игристое","method":"классический","region":"Долина Дона. Цимлянский","grapes":["Каберне совиньон","Пино нуар"],"rating":"Игристые розовые 02'24","rank":5,"photo":"https://static.tildacdn.com/stor3961-6264-4965-b737-336333643963/29196756.png","price":1429,"shop_links":[{"name":"Цимлянские вина","url":"https://tsimlawines.ru/wine/extra-brut-rozovoe-2019/"}],"landing_url":"https://firstguide.ru/tsimlyanskoe-vyderzhannoe-rose-extra-brut-2019"},{"title":"KD Розе де Сенье Брют 2021","brand":"КД","producer":"ИП Дзитоев К.","vintage":"2021","color":"Розовое","sugar":"Брют","type":"Игристое","method":"классический","region":"Долина Терека","grapes":["Пино нуар","Шардоне"],"rating":"Игристые розовые 02'24","rank":6,"photo":"https://static.tildacdn.com/stor6566-6632-4434-b437-663364653162/91542936.jpg","price":3030,"shop_links":[{"name":"WineHelp","url":"https://winehelp2.ru/product/igristoe-vino-konstantin-dzitoev-kd-brut-rose-2020-750-ml/"},{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/igristye-vina/kd-bryut-rozovoe-igristoe-vino-0-75-l/"}],"landing_url":"https://firstguide.ru/kd-rose-de-saignee-brut-2021"},{"title":"Усадьба Перовских Blanc de Blancs Brut Natur 2021","brand":"Усадьба Перовских","producer":"ООО «Усадьба Перовских»","vintage":"2021","color":"Белое","sugar":"Экстра Брют","type":"Игристое","method":"классический","region":"Севастополь. Качинская долина","grapes":["Шардоне"],"rating":"Игристые 12'23","rank":1,"photo":"https://static.tildacdn.com/stor6132-6434-4234-a436-643637626463/14059779.png","price":2400,"shop_links":[{"name":"MBG Wine","url":"https://mbg-store.ru/wine/18776/blan-de-blan-tz-usadba-perovskikh"},{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/igristye-vina/usadba-perovskih-blan-de-blan-ekstra-bryut-beloe-igristoe-vino-0-75-l/"},{"name":"WineStyle","url":"https://winestyle.ru/products/Usadba-Perovskih-Brut-Blanc-De-Blancs-2021.html"}],"landing_url":"https://firstguide.ru/usadba-perovskih-blanc-de-blancs-brut-natur-2021"},{"title":"Шумринка Extra Brut 2018","brand":"Шумринка","producer":"ООО «Шумринка»","vintage":"2018","color":"Белое","sugar":"Брют","type":"Игристое","method":"классический","region":"Кубань. Крымск","grapes":["Пино блан","Шардоне"],"rating":"Игристые 12'23","rank":2,"photo":"https://static.tildacdn.com/stor3033-3538-4065-a466-353635303838/45592564.png","price":1890,"shop_links":[{"name":"SimpleWine","url":"https://simplewine.ru/catalog/product/shumrinka_brut_white_2018_075_141987/"},{"name":"WineHelp","url":"https://winehelp2.ru/product/igristoe-vino-shumrinka-beloe-ekstra-bryut-2018-750-ml-12/"},{"name":"Галерея Градусов","url":"https://www.cigarpro.ru/drinks/sparkling-wines/russian/sumrinka/igristoe-vino-sumrinka-ekstra-briut-750-ml/"}],"landing_url":"https://firstguide.ru/shumrinka-extra-brut-2018"},{"title":"Primum Alveus Brut 2017","brand":"Primum Alveus","producer":"ООО АПФ «Фанагория»","vintage":"2017","color":"Белое","sugar":"Брют","type":"Игристое","method":"классический","region":"Кубань. Таманский полуостров","grapes":["Пино гри","Пино нуар","Шардоне"],"rating":"Игристые 12'23","rank":3,"photo":"https://static.tildacdn.com/stor6331-3739-4734-b062-323961326131/60781799.png","price":5600,"shop_links":[{"name":"Fortwine","url":"https://fortwine.ru/product/igristoe-vino-fanagoria-primum-alveus-brut-aged-2017-0-75/"},{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/igristye-vina/fanagoriya-primum-alveus-2017-ekstra-bryut-beloe-igristoe-vino-0-75-l/"},{"name":"WineStyle","url":"https://winestyle.ru/products/Fanagoria-Primum-Alveus-Extra-Brut-2017.html"}],"landing_url":"https://firstguide.ru/primum-alveus-brut-2017"},{"title":"Cock t'est belle Cuvee №1 Blanc de Blancs Extra Brut 2019","brand":"Семейная винодельня Волошиных","producer":"ООО «Семейная винодельня Волошиных»","vintage":"2019","color":"Белое","sugar":"Экстра Брют","type":"Игристое","method":"классический","region":"Крым","grapes":["Шардоне"],"rating":"Игристые 12'23","rank":4,"photo":"https://static.tildacdn.com/stor6163-3236-4865-a666-623363633465/72685283.jpg","price":4100,"shop_links":[{"name":"Luding","url":"https://luding.ru/collection/item/cock-t-est-belle-chardonnay-cuvee-1-blanc-de-blanc--229670"},{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/igristye-vina/shardone-cock-test-belle-beloe-igristoe-vino-0-75-l/"},{"name":"WineHelp","url":"https://winehelp2.ru/product/igristoe-vino-cock-t-est-belle-chardonnay-cuvee-1-blanc-de-blanc-ok-t-e-bel-shardone-kyuve-1-blan-de/"}],"landing_url":"https://firstguide.ru/cock-t-est-belle-cuvee-1-blanc-de-blancs-extra-brut-2019"},{"title":"Magnatum Extra Brut Rose 2020","brand":"Magnatum","producer":"ООО «Вина Лефкадии»","vintage":"2020","color":"Розовое","sugar":"Экстра Брют","type":"Игристое","method":"классический","region":"Кубань. Крымск","grapes":["Пино нуар","Шардоне"],"rating":"Игристые 12'23","rank":5,"photo":"https://static.tildacdn.com/stor3766-6634-4262-b363-323732636566/78005384.jpg","price":1650,"shop_links":[{"name":"SimpleWine","url":"https://simplewine.ru/catalog/product/magnatum_roze_2020_075_142951/"}],"landing_url":"https://firstguide.ru/magnatumextrabrutrose2020"},{"title":"Magnatum Blanc de Blancs Brut 2020","brand":"Magnatum","producer":"ООО «Вина Лефкадии»","vintage":"2020","color":"Белое","sugar":"Экстра Брют","type":"Игристое","method":"классический","region":"Кубань. Крымск","grapes":["Шардоне"],"rating":"Игристые 12'23","rank":6,"photo":"https://static.tildacdn.com/stor3963-3137-4438-b732-376439653332/74173383.jpg","price":1650,"shop_links":[{"name":"Nikolaev & Sons","url":"https://nsons.ru/catalog/vino/magnatum-blan-de-blan-2020/"}],"landing_url":"https://firstguide.ru/magnatum-blanc-de-blancs-brut-2020"},{"title":"Темелион Розе Брют 2019","brand":"Темелион","producer":"ООО «Вина Лефкадии»","vintage":"2019","color":"Розовое","sugar":"Брют","type":"Игристое","method":"классический","region":"Кубань. Крымск","grapes":["Пино нуар","Шардоне"],"rating":"Игристые 12'23","rank":7,"photo":"https://static.tildacdn.com/stor3030-6537-4031-a437-396337303663/24810149.jpg","price":2730,"shop_links":[{"name":"WineHelp","url":"https://winehelp2.ru/product/vino-igristoe-lefkadiya-temelion-vintazh-roze-2019-750-ml-12-/"}],"landing_url":"https://firstguide.ru/temelion-roze-bryut-2019"},{"title":"Абрау-Дюрсо Империал Brut 2019","brand":"Imperial","producer":"ООО «Абрау-Дюрсо»","vintage":"2019","color":"Белое","sugar":"Брют","type":"Игристое","method":"классический","region":"Кубань. Семигорье","grapes":["Пино блан","Пино нуар","Шардоне"],"rating":"Игристые 12'23","rank":8,"photo":"https://static.tildacdn.com/stor6237-6162-4634-b031-663863303165/29275080.jpg","price":3440,"shop_links":[{"name":"Азбука вкуса","url":"https://av.ru/i/420331/"},{"name":"WineStyle","url":"https://winestyle.ru/products/Abrau-Durso-Imperial-Brut-Vintage.html"}],"landing_url":"https://firstguide.ru/abrau-dyurso-imperial-brut-2019"},{"title":"Esse Brut Zero Dosage 2020","brand":"Esse","producer":"ООО «Сатера»","vintage":"2020","color":"Белое","sugar":"Экстра Брют","type":"Игристое","method":"классический","region":"Крым. Бахчисарай","grapes":["Шардоне"],"rating":"Игристые 12'23","rank":9,"photo":"https://static.tildacdn.com/stor3765-3731-4166-b933-646664633966/10592409.jpg","price":3900,"shop_links":[{"name":"Luding","url":"https://luding.ru/collection/item/esse-brut-zero-dosage-satera--29044/"},{"name":"Krasnostop","url":"https://krasnostop.ru/katalog/igristye-vina/zero-dozazh-esse-ekstra-bryut-beloe-igristoe-vino-0-75-l/"},{"name":"WineStyle","url":"https://winestyle.ru/products/Esse-Brut-Zero-Dosage.html"}],"landing_url":"https://firstguide.ru/esse-brut-zero-dosage-2020"},{"title":"Tête de Cheval Blanc de Blancs Brut 2019","brand":"Golubitskoe Estate","producer":"ООО «Поместье Голубицкое»","vintage":"2019","color":"Белое","sugar":"Брют","type":"Игристое","method":"классический","region":"Кубань. Таманский полуостров","grapes":["Шардоне"],"rating":"Игристые 12'23","rank":10,"photo":"https://static.tildacdn.com/stor6435-6663-4736-b166-333839616566/84154823.jpg","price":1600,"shop_links":[{"name":"WineStyle","url":"https://winestyle.ru/products/Tete-De-Cheval-Blanc-de-Blancs.html"},{"name":"ВинЛаб","url":"https://www.winelab.ru/product/1021747"},{"name":"Перекрёсток","url":"https://www.perekrestok.ru/cat/3/p/vino-igristoe-tete-de-cheval-blanc-de-blancs-beloe-brut-12-750ml-4106299"}],"landing_url":"https://firstguide.ru/tete-de-cheval-blanc-de-blancs-brut-2019"}]}</script>
+
+<script>
+(function() {
+  "use strict";
+
+  // =====================================================================
+  // CONFIGURATION — настройте источник данных
+  // =====================================================================
+  const CONFIG = {
+    // ОСНОВНОЙ СПОСОБ: URL JSON-файла с данными.
+    // Получаете его так: экспортируете CSV из Tilda Store → запускаете
+    // build_wine_ratings.py wines.csv --json > wines.json → заливаете
+    // wines.json на любой публичный URL (Tilda File Manager, GitHub raw, CDN).
+    // Если null — пробует ymlFeedUrl, затем вшитые данные.
+    jsonUrl: null,
+    // Например: "https://static.tildacdn.com/.../wines.json"
+
+    // ЗАПАСНОЙ СПОСОБ: URL YML-фида Tilda Store.
+    // Учтите ограничения: Tilda не выгружает в YML место в рейтинге (Mark)
+    // и стрипает ссылки <a href> в descrption. Поэтому YML-режим работает
+    // только для тех вин, у которых проставлен param[Рейтинг] и param[Место],
+    // и ссылки на магазины не отобразятся.
+    ymlFeedUrl: null,
+    // Например: "https://firstguide.ru/tstore/yml/XXXXX.yml"
+
+    // Кэш в sessionStorage (мин). 0 — не кэшировать.
+    cacheTtlMinutes: 5,
+
+    // Если в YML название рейтинга лежит не в <description>, укажите тут param-имя
+    // (например, "Рейтинг" или "Категория"). null = пробовать стандартные эвристики.
+    ratingFieldOverride: "Рейтинг",
+
+    // Если порядок мест 1–10 в YML лежит в каком-то <param>, укажите его имя
+    // (например, "Место" или "Оценка"). null = пробовать стандартные эвристики.
+    rankFieldOverride: "Место",
+  };
+
+  // -------- LOAD DATA (JSON URL → YML URL → embedded fallback) --------
+  const root = document.querySelector(".fg-ratings");
+  const $ = sel => root.querySelector(sel);
+  const $$ = sel => Array.from(root.querySelectorAll(sel));
+
+  // Show loading hint until data arrives
+  const entriesEl = $("#fg-entries");
+  entriesEl.innerHTML =
+    '<div style="text-align:center;padding:80px 20px;color:var(--ink-faint);' +
+    'font-family:Montserrat,sans-serif;font-style:italic;font-size:18px;">' +
+    'Загружаем рейтинги…</div>';
+
+  loadData().then(data => {
+    DATA = data;
+    ALL_WINES = DATA.wines;
+    RATINGS = DATA.ratings;
+    state.rating = RATINGS[0] || null;
+    DEFAULT_RATING = state.rating;
+    buildSlugMap();
+    applyHashState();
+    render();
+  }).catch(err => {
+    console.error("[fg-ratings] Не удалось загрузить данные:", err);
+    entriesEl.innerHTML =
+      '<div style="text-align:center;padding:80px 20px;color:var(--ink-faint);">' +
+      'Не удалось загрузить винные рейтинги. Попробуйте перезагрузить страницу.</div>';
+  });
+
+  async function loadData() {
+    // 1. JSON URL — preferred path, full data fidelity
+    if (CONFIG.jsonUrl) {
+      try {
+        const cached = readCache(CONFIG.jsonUrl);
+        if (cached) return cached;
+        const text = await fetchText(CONFIG.jsonUrl);
+        const parsed = JSON.parse(text);
+        if (!parsed.wines || parsed.wines.length === 0) {
+          throw new Error("JSON загружен, но в нём нет вин");
+        }
+        // If ratings list missing, derive from wines
+        if (!parsed.ratings || !parsed.ratings.length) {
+          parsed.ratings = sortRatings(Array.from(new Set(parsed.wines.map(w => w.rating).filter(Boolean))));
+        }
+        writeCache(CONFIG.jsonUrl, parsed);
+        return parsed;
+      } catch (e) {
+        console.warn("[fg-ratings] JSON не загрузился, пробую YML:", e);
+      }
+    }
+
+    // 2. YML feed — fallback with known limitations
+    if (CONFIG.ymlFeedUrl) {
+      try {
+        const cached = readCache(CONFIG.ymlFeedUrl);
+        if (cached) return cached;
+        const text = await fetchText(CONFIG.ymlFeedUrl);
+        const parsed = parseYml(text);
+        if (parsed.wines.length === 0) {
+          throw new Error("YML распарсен, но не нашлось вин с проставленным рейтингом");
+        }
+        writeCache(CONFIG.ymlFeedUrl, parsed);
+        return parsed;
+      } catch (e) {
+        console.warn("[fg-ratings] YML не сработал, использую вшитые данные:", e);
+      }
+    }
+
+    // 3. Embedded data — always works
+    return JSON.parse(document.getElementById("fg-wines-data").textContent);
+  }
+
+  async function fetchText(url) {
+    const res = await fetch(url, { cache: "default" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return res.text();
+  }
+
+  function readCache(url) {
+    if (!CONFIG.cacheTtlMinutes) return null;
+    try {
+      const raw = sessionStorage.getItem("fg-ratings-cache::" + url);
+      if (!raw) return null;
+      const obj = JSON.parse(raw);
+      if (Date.now() - obj.t > CONFIG.cacheTtlMinutes * 60 * 1000) return null;
+      return obj.d;
+    } catch (e) { return null; }
+  }
+  function writeCache(url, data) {
+    if (!CONFIG.cacheTtlMinutes) return;
+    try {
+      sessionStorage.setItem("fg-ratings-cache::" + url,
+        JSON.stringify({ t: Date.now(), d: data }));
+    } catch (e) { /* quota exceeded — fine, just skip */ }
+  }
+
+  // -------- YML PARSER (Tilda Store format) --------
+  function parseYml(text) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(text, "text/xml");
+    const parseError = doc.querySelector("parsererror");
+    if (parseError) throw new Error("XML parse error: " + parseError.textContent);
+
+    const offers = Array.from(doc.querySelectorAll("offer"));
+    const wines = [];
+
+    offers.forEach((offer, idx) => {
+      // Collect all <param name="...">value</param>
+      const params = {};
+      offer.querySelectorAll("param").forEach(p => {
+        const name = p.getAttribute("name");
+        if (name) params[name] = p.textContent.trim();
+      });
+
+      const getText = tag => {
+        const el = offer.querySelector(tag);
+        return el ? el.textContent.trim() : "";
+      };
+
+      // Wine title: Tilda emits <n>, other YML producers use <name>
+      const title = getText("n") || getText("name");
+
+      // Rating name (param[Рейтинг] in Tilda's case)
+      const rating = CONFIG.ratingFieldOverride
+        ? (params[CONFIG.ratingFieldOverride] || "")
+        : getText("description") || params["Рейтинг"] || params["Категория"] || "";
+
+      // Rank — try multiple strategies
+      const rank = extractRank(offer, params, idx);
+
+      // Grapes — split by , or ;
+      const grapeStr = params["Виноград"] || "";
+      const grapes = grapeStr.split(/[,;]/)
+        .map(g => g.trim())
+        .filter(Boolean)
+        .map(g => g[0].toUpperCase() + g.slice(1));
+
+      // Shop links: try to extract <a href> from <description>, then from <text> if exists.
+      // Tilda's YML strips <a> tags down to plain text — in that case shop_links will be empty.
+      const descHtml = getText("description");
+      const textEl = offer.querySelector("text");
+      const textHtml = textEl ? textEl.textContent : "";
+      const shopLinks = parseShopLinks(descHtml + " " + textHtml);
+
+      wines.push({
+        id: offer.getAttribute("id") || String(idx),
+        title: title,
+        brand: getText("vendor") || params["Бренд"] || "",
+        producer: params["Производитель"] || "",
+        vintage: params["Винтаж"] || "",
+        color: params["Цвет"] || "",
+        sugar: params["Сахар"] || "",
+        type: params["Тип"] || "",
+        method: params["Способ производства"] || params["Метод"] || "",
+        region: params["Регион"] || "",
+        grapes: grapes,
+        rating: rating,
+        rank: rank,
+        photo: getText("picture"),
+        price: parseInt(getText("price")) || 0,
+        shop_links: shopLinks,
+      });
+    });
+
+    // Only keep wines that have a rating tag — without it we can't position them
+    const valid = wines.filter(w => w.rating);
+
+    // Build sorted ratings list (newest first)
+    const ratings = sortRatings(Array.from(new Set(valid.map(w => w.rating))));
+
+    return { ratings, wines: valid };
+  }
+
+  function extractRank(offer, params, fallbackIdx) {
+    // Custom override first
+    if (CONFIG.rankFieldOverride && params[CONFIG.rankFieldOverride]) {
+      const n = parseInt(params[CONFIG.rankFieldOverride]);
+      if (!isNaN(n) && n > 0) return n;
+    }
+    // Common Tilda places to look
+    const candidates = [
+      params["Место"], params["Mark"], params["Оценка"], params["Rank"],
+      offer.getAttribute("mark"),
+    ];
+    for (const c of candidates) {
+      if (c == null) continue;
+      const n = parseInt(c);
+      if (!isNaN(n) && n > 0 && n <= 100) return n;
+    }
+    // Last resort: use 1-based index (assumes Tilda preserves Store order)
+    return fallbackIdx + 1;
+  }
+
+  function parseShopLinks(html) {
+    if (!html) return [];
+    const links = [];
+    const re = /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+    let m;
+    while ((m = re.exec(html)) !== null) {
+      const url = cleanTrackingParams(m[1]);
+      const inner = m[2];
+      const name = inner.replace(/<[^>]+>/g, "")
+        .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&")
+        .trim();
+      if (url && name) links.push({ name, url });
+    }
+    return links;
+  }
+
+  // Strip tracking query parameters (ysclid, utm_*, gclid, etc.)
+  const TRACKING_PARAMS = new Set([
+    "ysclid", "yclid", "gclid", "gclsrc", "dclid",
+    "fbclid", "_openstat", "mc_eid", "mc_cid",
+    "utm_source", "utm_medium", "utm_campaign",
+    "utm_term", "utm_content", "utm_id", "utm_name",
+    "igshid", "twclid", "mkt_tok",
+  ]);
+  function cleanTrackingParams(url) {
+    if (!url || url.indexOf("?") === -1) return url;
+    try {
+      const u = new URL(url);
+      const keep = [];
+      u.searchParams.forEach((v, k) => {
+        if (!TRACKING_PARAMS.has(k.toLowerCase())) keep.push([k, v]);
+      });
+      // Rebuild
+      u.search = "";
+      keep.forEach(([k, v]) => u.searchParams.append(k, v));
+      return u.toString();
+    } catch (e) {
+      return url;
+    }
+  }
+
+  function sortRatings(arr) {
+    // Parse "Topic MM'YY" or "Topic 'YY" — newest first
+    function key(name) {
+      const m = name.match(/(?:(\d{2}))?'(\d{2})\s*$/);
+      if (!m) return [0, 0];
+      const month = m[1] ? parseInt(m[1]) : 6;
+      const year = 2000 + parseInt(m[2]);
+      return [year, month];
+    }
+    return arr.slice().sort((a, b) => {
+      const [yA, mA] = key(a);
+      const [yB, mB] = key(b);
+      if (yA !== yB) return yB - yA;
+      return mB - mA;
+    });
+  }
+
+  // -------- STATE & RENDER (same logic as before) --------
+  let DATA, ALL_WINES, RATINGS, DEFAULT_RATING;
+  const state = {
+    rating: null, grape: null, brand: null, vintage: null, price: null,
+    color: null, sugar: null, type: null, region: null
+  };
+
+  // Price buckets — wine list filter pricing tiers
+  const PRICE_BUCKETS = [
+    { id: "lt1000",     label: "до 1000 \u20BD",     min: 0,    max: 1000     },
+    { id: "1000-2500",  label: "1000\u20132500 \u20BD",  min: 1000, max: 2500     },
+    { id: "2500-5000",  label: "2500\u20135000 \u20BD",  min: 2500, max: 5000     },
+    { id: "5000plus",   label: "5000+ \u20BD",       min: 5000, max: Infinity }
+  ];
+  function priceLabel(id) {
+    const b = PRICE_BUCKETS.find(b => b.id === id);
+    return b ? b.label : "";
+  }
+  function inPriceBucket(price, bucket) {
+    const p = price || 0;
+    return p >= bucket.min && p < bucket.max;
+  }
+
+  function escapeHtml(s) {
+    if (s == null) return "";
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+  }
+
+  function fmtPrice(p) {
+    if (!p || p < 1) return "";
+    return p.toLocaleString("ru-RU") + " \u20BD";
+  }
+
+  function ruSort(a, b) { return a.localeCompare(b, "ru", { sensitivity: "base" }); }
+
+  // ===== URL hash routing for sharing direct rating links =====
+  const TRANSLIT_MAP = {
+    'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'yo','ж':'zh',
+    'з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p',
+    'р':'r','с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'ts','ч':'ch','ш':'sh',
+    'щ':'sch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya'
+  };
+  // Russian topic → English slug. Add new entries here when adding new rating themes.
+  // If a topic isn't in this map, slugify falls back to transliteration.
+  const SLUG_TOPICS = {
+    // Cорта (могут быть в ед. и мн. числе)
+    "Шардоне": "chardonnay",
+    "Рислинг": "riesling",
+    "Рислинги": "riesling",
+    "Пино Нуар": "pinot-noir",
+    "Пино Нуары": "pinot-noir",
+    "Петнат": "pet-nat",
+    "Петнаты": "pet-nat",
+    "Совиньон Блан": "sauvignon-blanc",
+    "Совиньон Бланы": "sauvignon-blanc",
+    "Красностоп": "krasnostop",
+    "Красностопы": "krasnostop",
+    // Категории
+    "Игристые": "sparkling",
+    "Игристые вина": "sparkling-wines",
+    "Игристые розовые": "sparkling-rose",
+    "Игристые розовые вина": "sparkling-rose",
+    "Тихие розовые": "still-rose",
+    "Тихие розовые вина": "still-rose",
+    "Оранжевые": "orange-wines",
+    "Оранжевые вина": "orange-wines",
+    "Красные вина": "red-wines",
+    "Дачные красные": "country-reds",
+    // Тематические
+    "Вина для лета": "summer-wines",
+    "Недорогие романтические": "affordable-romantic"
+  };
+  function transliterate(s) {
+    return s.toLowerCase()
+      .split('').map(c => TRANSLIT_MAP[c] !== undefined ? TRANSLIT_MAP[c] : c).join('')
+      .replace(/[^a-z0-9\s-]+/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+  }
+  function slugify(s) {
+    if (!s) return '';
+    // Parse "Topic MM'YY" or "Topic 'YY" at end of string
+    const m = s.match(/^(.+?)\s+(?:(\d{2}))?'(\d{2})\s*$/);
+    if (m) {
+      const topic = m[1].trim();
+      const month = m[2] || null;
+      const year = m[3];
+      const slugTopic = SLUG_TOPICS[topic] || transliterate(topic);
+      const datePart = month ? `${month}-20${year}` : `20${year}`;
+      return slugTopic ? `${slugTopic}-${datePart}` : datePart;
+    }
+    // Fallback: no recognizable date suffix — full transliteration
+    return transliterate(s);
+  }
+  let RATING_SLUGS = {}; // { slug: ratingName }
+  function buildSlugMap() {
+    RATING_SLUGS = {};
+    RATINGS.forEach(r => { RATING_SLUGS[slugify(r)] = r; });
+  }
+  function applyHashState() {
+    const hash = decodeURIComponent((location.hash || '').replace('#', '').trim());
+    if (!hash) return;
+    if (hash === 'all') {
+      state.rating = null;
+    } else if (RATING_SLUGS[hash]) {
+      state.rating = RATING_SLUGS[hash];
+    }
+  }
+  function updateHash() {
+    if (!RATINGS) return;
+    const slug = state.rating ? slugify(state.rating) : 'all';
+    const current = (location.hash || '').replace('#', '');
+    if (current !== slug) {
+      try { history.replaceState(null, '', '#' + slug); } catch (e) { /* graceful fail */ }
+    }
+  }
+
+  function buildOptions(filterType) {
+    const otherFilters = { ...state, [filterType]: null };
+    const filteredByOthers = ALL_WINES.filter(w => matchesFilters(w, otherFilters));
+    if (filterType === "rating") {
+      const counts = {};
+      filteredByOthers.forEach(w => { counts[w.rating] = (counts[w.rating] || 0) + 1; });
+      return RATINGS.map(r => ({ value: r, label: r, count: counts[r] || 0 }))
+        .filter(o => o.count > 0 || state.rating === o.value);
+    }
+    if (filterType === "price") {
+      return PRICE_BUCKETS.map(b => ({
+        value: b.id,
+        label: b.label,
+        count: filteredByOthers.filter(w => inPriceBucket(w.price, b)).length
+      })).filter(o => o.count > 0 || state.price === o.value);
+    }
+    const valueMap = {};
+    filteredByOthers.forEach(w => {
+      let vals = [];
+      if (filterType === "grape") vals = w.grapes || [];
+      else if (filterType === "brand") vals = w.brand ? [w.brand] : [];
+      else if (filterType === "vintage") vals = w.vintage ? [w.vintage] : [];
+      else if (filterType === "color") vals = w.color ? [w.color] : [];
+      else if (filterType === "sugar") vals = w.sugar ? [w.sugar] : [];
+      else if (filterType === "type") vals = w.type ? [w.type] : [];
+      else if (filterType === "region") vals = w.region ? [w.region] : [];
+      vals.forEach(v => { if (v) valueMap[v] = (valueMap[v] || 0) + 1; });
+    });
+    const arr = Object.keys(valueMap).map(v => ({ value: v, label: v, count: valueMap[v] }));
+    if (filterType === "vintage") {
+      // Newest year first
+      arr.sort((a, b) => b.value.localeCompare(a.value));
+    } else {
+      arr.sort((a, b) => ruSort(a.label, b.label));
+    }
+    return arr;
+  }
+
+  function matchesFilters(wine, filters) {
+    if (filters.rating && wine.rating !== filters.rating) return false;
+    if (filters.grape && !(wine.grapes || []).includes(filters.grape)) return false;
+    if (filters.brand && wine.brand !== filters.brand) return false;
+    if (filters.vintage && wine.vintage !== filters.vintage) return false;
+    if (filters.color && wine.color !== filters.color) return false;
+    if (filters.sugar && wine.sugar !== filters.sugar) return false;
+    if (filters.type && wine.type !== filters.type) return false;
+    if (filters.region && wine.region !== filters.region) return false;
+    if (filters.price) {
+      const bucket = PRICE_BUCKETS.find(b => b.id === filters.price);
+      if (!bucket || !inPriceBucket(wine.price, bucket)) return false;
+    }
+    return true;
+  }
+
+  let openDropdown = null;
+  function closeDropdown() {
+    if (openDropdown) {
+      openDropdown.classList.remove("is-open");
+      const btn = openDropdown.previousElementSibling;
+      if (btn) btn.setAttribute("aria-expanded", "false");
+      openDropdown.remove();
+      openDropdown = null;
+    }
+  }
+
+  function openDropdownFor(filterType) {
+    closeDropdown();
+    const filterEl = root.querySelector(`.fg-filter[data-filter="${filterType}"]`);
+    const btn = filterEl.querySelector(".fg-filter__btn");
+    const opts = buildOptions(filterType);
+    const labels = {
+      rating: "Все вина из рейтингов", grape: "Все сорта",
+      brand: "Все бренды", vintage: "Любой год",
+      price: "Любая цена", color: "Любой цвет",
+      sugar: "Любой сахар", type: "Любой тип",
+      region: "Любой регион"
+    };
+    const showSearch = opts.length > 8;
+
+    const dropdown = document.createElement("div");
+    dropdown.className = "fg-dropdown is-open";
+    dropdown.innerHTML = `
+      ${showSearch ? `
+        <div class="fg-dropdown__search">
+          <input type="text" placeholder="Поиск..." autocomplete="off">
+        </div>` : ""}
+      <div class="fg-dropdown__list" role="listbox"></div>
+    `;
+    filterEl.appendChild(dropdown);
+
+    const listEl = dropdown.querySelector(".fg-dropdown__list");
+    const searchInput = dropdown.querySelector("input");
+
+    function renderList(filterText) {
+      const q = (filterText || "").trim().toLowerCase();
+      let items = [{ value: null, label: labels[filterType], count: null, isReset: true }];
+      const filteredOpts = q ? opts.filter(o => o.label.toLowerCase().includes(q)) : opts;
+      items = items.concat(filteredOpts);
+
+      if (filteredOpts.length === 0 && q) {
+        listEl.innerHTML = `<div class="fg-dropdown__empty">По запросу «${escapeHtml(filterText)}» ничего не нашлось</div>`;
+        return;
+      }
+      listEl.innerHTML = items.map(item => {
+        const isActive = state[filterType] === item.value;
+        const cls = `fg-dropdown__item${isActive ? " is-active" : ""}`;
+        const countHtml = item.count != null ? `<span class="fg-dropdown__item-count">${item.count}</span>` : "";
+        return `<button type="button" class="${cls}" data-value="${escapeHtml(item.value || "")}">
+          <span>${escapeHtml(item.label)}</span>${countHtml}
+        </button>`;
+      }).join("");
+
+      listEl.querySelectorAll(".fg-dropdown__item").forEach((el, idx) => {
+        el.addEventListener("click", () => {
+          const item = items[idx];
+          state[filterType] = item.isReset ? null : item.value;
+          closeDropdown();
+          render();
+        });
+      });
+    }
+
+    renderList("");
+    if (searchInput) {
+      searchInput.focus();
+      searchInput.addEventListener("input", e => renderList(e.target.value));
+    }
+
+    btn.setAttribute("aria-expanded", "true");
+    openDropdown = dropdown;
+  }
+
+  document.addEventListener("click", e => {
+    if (!openDropdown) return;
+    if (!openDropdown.parentElement.contains(e.target)) closeDropdown();
+  });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape" && openDropdown) closeDropdown();
+  });
+
+  $$(".fg-filter").forEach(filterEl => {
+    const filterType = filterEl.dataset.filter;
+    const btn = filterEl.querySelector(".fg-filter__btn");
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      if (openDropdown && openDropdown.parentElement === filterEl) {
+        closeDropdown();
+      } else {
+        openDropdownFor(filterType);
+      }
+    });
+  });
+
+  function updateFilterButtons() {
+    const labels = {
+      rating: { name: "Рейтинг", placeholder: "Все вина из рейтингов" },
+      grape: { name: "Виноград", placeholder: "все сорта" },
+      brand: { name: "Бренд", placeholder: "все бренды" },
+      vintage: { name: "Год", placeholder: "любой год" },
+      price: { name: "Цена", placeholder: "любая цена" },
+      color: { name: "Цвет", placeholder: "любой цвет" },
+      sugar: { name: "Сахар", placeholder: "любой сахар" },
+      type: { name: "Тип", placeholder: "любой тип" },
+      region: { name: "Регион", placeholder: "любой регион" },
+    };
+    Object.keys(labels).forEach(type => {
+      const filterEl = root.querySelector(`.fg-filter[data-filter="${type}"]`);
+      const valueEl = filterEl.querySelector(".fg-filter__value");
+      const v = state[type];
+      if (v) {
+        let display = v;
+        if (type === "rating") display = v;
+        else if (type === "price") display = priceLabel(v);
+        valueEl.textContent = display;
+        valueEl.classList.remove("fg-filter__value--placeholder");
+      } else {
+        valueEl.textContent = labels[type].placeholder;
+        valueEl.classList.add("fg-filter__value--placeholder");
+      }
+    });
+  }
+
+  function renderChips() {
+    const chipsEl = $("#fg-chips");
+    const chips = [];
+    [{ key: "grape" }, { key: "brand" }, { key: "vintage" }, { key: "price" },
+     { key: "color" }, { key: "sugar" }, { key: "type" }, { key: "region" }].forEach(t => {
+      if (state[t.key]) {
+        const display = t.key === "price" ? priceLabel(state[t.key]) : state[t.key];
+        chips.push(`<span class="fg-chip">${escapeHtml(display)}<button class="fg-chip__close" data-clear="${t.key}" aria-label="Снять фильтр">×</button></span>`);
+      }
+    });
+    chipsEl.innerHTML = chips.join("");
+    chipsEl.querySelectorAll("[data-clear]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        state[btn.dataset.clear] = null;
+        render();
+      });
+    });
+  }
+
+  function renderMeta(filteredCount) {
+    const countEl = $("#fg-count");
+    const resetEl = $("#fg-reset");
+    let label = "";
+    const noSecondary = !state.grape && !state.brand && !state.vintage && !state.price
+      && !state.color && !state.sugar && !state.type && !state.region;
+    if (filteredCount === 0) {
+      label = "Ничего не нашлось";
+    } else if (noSecondary) {
+      label = `<strong>${filteredCount}</strong> ${pluralize(filteredCount, "вино", "вина", "вин")}`;
+    } else {
+      label = `Найдено <strong>${filteredCount}</strong> ${pluralize(filteredCount, "вино", "вина", "вин")}`;
+    }
+    countEl.innerHTML = label;
+    const hasFilters = state.rating !== DEFAULT_RATING || !noSecondary;
+    resetEl.hidden = !hasFilters;
+  }
+
+  function pluralize(n, one, few, many) {
+    const m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return one;
+    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
+    return many;
+  }
+
+  function renderEntries(wines) {
+    const listEl = $("#fg-entries");
+    const emptyEl = $("#fg-empty");
+    if (wines.length === 0) {
+      listEl.innerHTML = "";
+      emptyEl.hidden = false;
+      return;
+    }
+    emptyEl.hidden = true;
+
+    const allSameRating = wines.every(w => w.rating === wines[0].rating);
+    listEl.classList.toggle("is-single-rating", allSameRating);
+    listEl.classList.toggle("is-mixed", !allSameRating);
+
+    const ratingOrder = {};
+    RATINGS.forEach((r, i) => ratingOrder[r] = i);
+    wines.sort((a, b) => {
+      if (allSameRating) return a.rank - b.rank;
+      const da = ratingOrder[a.rating] ?? 999;
+      const db = ratingOrder[b.rating] ?? 999;
+      if (da !== db) return da - db;
+      return a.rank - b.rank;
+    });
+
+    listEl.innerHTML = wines.map(w => entryHtml(w, allSameRating)).join("");
+
+    listEl.querySelectorAll("[data-grape]").forEach(el => {
+      el.addEventListener("click", () => {
+        state.grape = el.dataset.grape;
+        render();
+        const ft = root.querySelector(".fg-filters");
+        if (ft) ft.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+
+    listEl.querySelectorAll(".fg-entry__photo").forEach(el => {
+      el.addEventListener("click", () => {
+        const img = el.querySelector("img");
+        if (!img || !img.src) return;
+        const card = el.closest(".fg-entry");
+        const titleEl = card ? card.querySelector(".fg-entry__title") : null;
+        const caption = titleEl ? titleEl.textContent.trim() : "";
+        openLightbox(img.src, img.alt || caption, caption);
+      });
+    });
+  }
+
+  function openLightbox(src, alt, caption) {
+    const lb = document.createElement("div");
+    lb.className = "fg-lightbox";
+    lb.setAttribute("role", "dialog");
+    lb.setAttribute("aria-modal", "true");
+    lb.setAttribute("aria-label", caption || "Фото вина");
+    lb.innerHTML =
+      '<button type="button" class="fg-lightbox__close" aria-label="Закрыть">\u00d7</button>' +
+      '<img class="fg-lightbox__img" src="' + escapeHtml(src) + '" alt="' + escapeHtml(alt || "") + '" />' +
+      (caption ? '<div class="fg-lightbox__caption">' + escapeHtml(caption) + '</div>' : '');
+    document.body.appendChild(lb);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function close() {
+      lb.remove();
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener("keydown", onKey);
+    }
+    function onKey(e) { if (e.key === "Escape") close(); }
+    lb.addEventListener("click", close);
+    lb.querySelector(".fg-lightbox__img").addEventListener("click", e => e.stopPropagation());
+    lb.querySelector(".fg-lightbox__close").addEventListener("click", e => {
+      e.stopPropagation();
+      close();
+    });
+    document.addEventListener("keydown", onKey);
+  }
+
+  function entryHtml(w, isSingleRating) {
+    const tags = [];
+    if (w.color) tags.push(`<span class="fg-entry__tag">${escapeHtml(w.color)}</span>`);
+    if (w.sugar) tags.push(`<span class="fg-entry__tag">${escapeHtml(w.sugar)}</span>`);
+    if (w.type) tags.push(`<span class="fg-entry__tag">${escapeHtml(w.type)}</span>`);
+
+    const grapesHtml = (w.grapes || []).map(g =>
+      `<span class="fg-entry__grape-link" data-grape="${escapeHtml(g)}">${escapeHtml(g)}</span>`
+    ).join(", ");
+
+    const shopsHtml = (w.shop_links && w.shop_links.length)
+      ? `<span class="fg-entry__shops-label">Где купить</span>
+         ${w.shop_links.map(s =>
+           `<a class="fg-shop" href="${escapeHtml(s.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(s.name)}</a>`
+         ).join("")}`
+      : `<p class="fg-entry__no-shops">Сейчас нет в открытой продаже</p>`;
+
+    const rankContext = isSingleRating ? "" :
+      `<span class="fg-entry__rank-context">${escapeHtml(w.rating)}</span>`;
+
+    const photoUrl = w.photo || "";
+    const photoHtml = photoUrl
+      ? `<img src="${escapeHtml(photoUrl)}" alt="${escapeHtml(w.title)}" loading="lazy">`
+      : "";
+
+    return `
+      <article class="fg-entry">
+        <div class="fg-entry__rank">${w.rank}${rankContext}</div>
+        <div class="fg-entry__photo">${photoHtml}</div>
+        <div class="fg-entry__body">
+          <p class="fg-entry__brand">${escapeHtml(w.brand || "")}${w.vintage ? " · " + escapeHtml(w.vintage) : ""}</p>
+          <h3 class="fg-entry__title">${escapeHtml(w.title)}</h3>
+          <div class="fg-entry__tags">${tags.join("")}</div>
+          <div class="fg-entry__meta">
+            ${grapesHtml ? `<div class="fg-entry__meta-row">
+              <span class="fg-entry__meta-key">Виноград</span>
+              <span class="fg-entry__meta-val">${grapesHtml}</span>
+            </div>` : ""}
+            ${w.region ? `<div class="fg-entry__meta-row">
+              <span class="fg-entry__meta-key">Регион</span>
+              <span class="fg-entry__meta-val">${escapeHtml(w.region)}</span>
+            </div>` : ""}
+          </div>
+        </div>
+        <aside class="fg-entry__aside">
+          ${w.price ? `<div class="fg-entry__price">${escapeHtml(fmtPrice(w.price))}</div>
+            <div class="fg-entry__price-note">примерная розничная цена на дату дегустации</div>` : ""}
+          <div class="fg-entry__shops">${shopsHtml}</div>
+        </aside>
+      </article>
+    `;
+  }
+
+  function render() {
+    if (!ALL_WINES) return;
+    const filtered = ALL_WINES.filter(w => matchesFilters(w, state));
+    updateFilterButtons();
+    renderChips();
+    renderMeta(filtered.length);
+    renderEntries(filtered);
+    updateFilterToggleCount();
+    updateHash();
+  }
+
+  window.addEventListener('hashchange', () => {
+    if (!RATINGS) return;
+    applyHashState();
+    render();
+  });
+
+  $("#fg-reset").addEventListener("click", () => {
+    state.rating = DEFAULT_RATING;
+    state.grape = null;
+    state.brand = null;
+    state.vintage = null;
+    state.price = null;
+    state.color = null;
+    state.sugar = null;
+    state.type = null;
+    state.region = null;
+    render();
+  });
+
+  // ---------- Mobile filter-bar toggle ----------
+  const filterSection = root.querySelector(".fg-filters-section");
+  const filterToggle = root.querySelector(".fg-filters-toggle");
+  const filterToggleText = root.querySelector(".fg-filters-toggle__text");
+  const filterToggleCount = root.querySelector("#fg-filters-toggle-count");
+
+  filterToggle.addEventListener("click", () => {
+    const expanded = filterSection.dataset.expanded === "true";
+    filterSection.dataset.expanded = expanded ? "false" : "true";
+    filterToggle.setAttribute("aria-expanded", expanded ? "false" : "true");
+    filterToggleText.textContent = expanded ? "Показать фильтры" : "Скрыть фильтры";
+  });
+
+  function updateFilterToggleCount() {
+    const active = ["color", "sugar", "type", "grape", "region", "vintage", "brand", "price"]
+      .filter(k => state[k]).length;
+    if (active > 0) {
+      filterToggleCount.hidden = false;
+      filterToggleCount.textContent = `· ${active} ${pluralize(active, "активный", "активных", "активных")}`;
+    } else {
+      filterToggleCount.hidden = true;
+      filterToggleCount.textContent = "";
+    }
+  }
+
+})();
+</script>
+
+<script>
+/* iframe auto-resize: when this page is embedded in an iframe (e.g. in Tilda),
+   notify the parent window of content-height changes so the iframe can be
+   resized to fit content with no scrollbar/padding. */
+(function() {
+  if (window.parent === window) return; // not embedded — nothing to do
+
+  let lastHeight = 0;
+  function postHeight() {
+    const h = Math.max(
+      document.documentElement.scrollHeight,
+      document.body.scrollHeight
+    );
+    if (h !== lastHeight && h > 0) {
+      lastHeight = h;
+      window.parent.postMessage(
+        { type: "fg-ratings-height", height: h },
+        "*"
+      );
+    }
+  }
+
+  // Send initial height once page is fully laid out
+  if (document.readyState === "complete") {
+    postHeight();
+  } else {
+    window.addEventListener("load", postHeight);
+  }
+
+  // React to content reflows (filter changes, mobile filter expand, etc.)
+  if (typeof ResizeObserver !== "undefined") {
+    new ResizeObserver(() => postHeight()).observe(document.body);
+  } else {
+    // Older browsers: poll every 500ms
+    setInterval(postHeight, 500);
+  }
+
+  // Belt-and-suspenders: re-check shortly after any click
+  // (covers dropdowns, filter selections, lightbox close)
+  document.addEventListener("click", () => setTimeout(postHeight, 120));
+})();
+</script>
+
+</body>
+</html>
