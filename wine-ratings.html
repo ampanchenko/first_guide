@@ -889,8 +889,10 @@
       aspect-ratio: auto;
       align-self: stretch;
       margin-top: 18px;
+      cursor: default;
     }
     .fg-entry__photo img { padding: 18px; }
+    .fg-entry:hover .fg-entry__photo img { transform: none; }
 
     .fg-entry__body {
       grid-area: auto;
@@ -975,6 +977,25 @@
   /* prevent body scroll-lock from interfering */
   .fg-ratings {
     isolation: isolate;
+  }
+
+  /* Disable iOS Safari double-tap zoom on all interactive elements.
+     'manipulation' allows pan + pinch-zoom but blocks the double-tap-to-zoom
+     gesture, which was triggering accidental zoom-in on filter buttons,
+     dropdown options, sort, and shop cards. */
+  .fg-ratings button,
+  .fg-ratings a,
+  .fg-ratings [role="option"],
+  .fg-ratings [role="listbox"],
+  .fg-ratings .fg-filter,
+  .fg-ratings .fg-chip,
+  .fg-ratings .fg-shop,
+  .fg-ratings .fg-entry__photo,
+  .fg-ratings .fg-entry__grape-link,
+  .fg-ratings input,
+  .fg-ratings select,
+  .fg-ratings label {
+    touch-action: manipulation;
   }
 </style>
 </head>
@@ -1512,6 +1533,12 @@
     if (current !== slug) {
       try { history.replaceState(null, '', '#' + slug); } catch (e) { /* graceful fail */ }
     }
+    // When embedded, also notify parent so it can sync its own URL
+    if (window.parent !== window) {
+      try {
+        window.parent.postMessage({ type: "fg-ratings-hash", hash: slug }, "*");
+      } catch (e) { /* ignore */ }
+    }
   }
 
   function buildOptions(filterType) {
@@ -1787,6 +1814,8 @@
 
     listEl.querySelectorAll(".fg-entry__photo").forEach(el => {
       el.addEventListener("click", () => {
+        // On mobile (≤880px) photo is not clickable — skip lightbox
+        if (window.matchMedia("(max-width: 880px)").matches) return;
         const img = el.querySelector("img");
         if (!img || !img.src) return;
         const card = el.closest(".fg-entry");
@@ -2103,9 +2132,21 @@
   // Receive viewport info from parent (used to position lightbox over the
   // currently visible portion of the iframe, not the start of it)
   window.addEventListener("message", function(e) {
-    if (!e.data || e.data.type !== "fg-ratings-viewport") return;
-    if (typeof e.data.top !== "number" || typeof e.data.height !== "number") return;
-    window.__fgViewport = { top: e.data.top, height: e.data.height };
+    if (!e.data) return;
+    if (e.data.type === "fg-ratings-viewport") {
+      if (typeof e.data.top !== "number" || typeof e.data.height !== "number") return;
+      window.__fgViewport = { top: e.data.top, height: e.data.height };
+    } else if (e.data.type === "fg-ratings-init-hash") {
+      // Parent sends its current hash so we can sync to it on first load
+      // (allows shared/bookmarked URLs like /w_ratings#chardonnay-03-2026)
+      if (typeof e.data.hash === "string" && e.data.hash) {
+        try {
+          if (location.hash !== "#" + e.data.hash) {
+            location.hash = e.data.hash;
+          }
+        } catch (err) { /* ignore */ }
+      }
+    }
   });
 })();
 </script>
