@@ -99,8 +99,8 @@
     font-size: 11px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: var(--ink-faint);
-    font-weight: 500;
+    color: var(--brand-red);
+    font-weight: 600;
   }
   .fg-ratings .fg-rating-heading__row {
     display: inline-flex;
@@ -120,6 +120,12 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  /* The heading uses .fg-filter__btn for behavior, but it must NOT show
+     the small generic chevron from .fg-filter__btn::after — it has its own
+     larger one (.fg-rating-heading__chevron) sitting next to the title. */
+  .fg-ratings .fg-rating-heading__btn::after {
+    display: none;
   }
   .fg-ratings .fg-rating-heading__chevron {
     font-size: 0.45em;
