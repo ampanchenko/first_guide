@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Лучшие российские винные карты · Первый Гид</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+
+<!--
+========================================================================
+  ЛУЧШИЕ РОССИЙСКИЕ ВИННЫЕ КАРТЫ · ПЕРВЫЙ ГИД
+  Self-contained HTML block. Paste into Tilda T123 (HTML) container.
+
+  Чтобы обновить данные:
+    Замените содержимое <script id="fg-cards-data"> на свежий JSON.
+    Формат: {"rating_title": "...", "rating_subtitle": "...", "restaurants": [...]}
+
+  Поля ресторана:
+    rank          — место (1..50)
+    name          — название
+    segment       — "🏆 Лидер" или "🥇 Топ-50"
+    sommelier     — имя сомелье (string, может быть пустой)
+    depth         — бутылок в карте (Глубина)
+    mono_grapes   — моно-сортовых вин
+    blends        — бленды
+    producers     — хозяйств
+    regions       — регионов ЗГУ
+    types_in_card — "n/6" типов вин в карте
+    autochthons   — "сорта : бутылки" автохтонов
+    btg           — {red, white, rose, sparkling, orange, sweet} — БТГ по цветам
+    btg_types_count — "n/6" типов в БТГ
+    median_glass_rub  — медиана бокала, ₽
+    median_bottle_rub — медиана бутылки, ₽
+========================================================================
+-->
+
+<style>
+  /* ============ NAMESPACED RESET ============ */
+  .fg-cards *,
+  .fg-cards *::before,
+  .fg-cards *::after {
+    box-sizing: border-box;
+  }
+  .fg-cards {
+    --ink: #1a1614;
+    --ink-soft: #4a4035;
+    --ink-faint: #7a6f60;
+    --paper: #cac4b0;
+    --paper-warm: #ede7d3;
+    --paper-deep: #ffffff;
+    --rule: #a8a08a;
+    --rule-soft: #cfc6ad;
+    --wine: #b72424;
+    --wine-soft: #cf3a3a;
+    --brand-red: #b72424;
+    --gold: #a57430;
+    --green: #4a7847;
+    --rose: #d97a8f;
+    --orange-tint: #d68a3a;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 8px 24px rgba(0, 0, 0, .10);
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, .04), 0 4px 14px rgba(0, 0, 0, .07);
+
+    font-family: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: var(--ink);
+    background: var(--paper);
+    line-height: 1.55;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "kern", "liga", "calt";
+  }
+  .fg-cards a { color: inherit; text-decoration: none; }
+  .fg-cards button {
+    font-family: inherit; font-size: inherit; color: inherit;
+    background: none; border: none; cursor: pointer; padding: 0;
+  }
+  .fg-cards h1, .fg-cards h2, .fg-cards h3, .fg-cards h4, .fg-cards p, .fg-cards dl, .fg-cards dt, .fg-cards dd, .fg-cards ul {
+    margin: 0; padding: 0;
+  }
+  .fg-cards ul { list-style: none; }
+
+  /* ============ LAYOUT ============ */
+  .fg-cards .fg-wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: clamp(32px, 5vw, 72px) clamp(20px, 5vw, 48px) clamp(48px, 6vw, 88px);
+  }
+
+  /* ============ PAGE HEAD ============ */
+  .fg-cards .fg-page-head {
+    margin: 0 0 36px 0;
+  }
+  .fg-cards .fg-page-head__label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--brand-red);
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+  .fg-cards .fg-page-head__title {
+    font-weight: 600;
+    font-size: 48px;
+    letter-spacing: -0.025em;
+    line-height: 1.05;
+    color: var(--ink);
+    margin-bottom: 14px;
+  }
+  .fg-cards .fg-page-head__sub {
+    font-size: 16px;
+    color: var(--ink-soft);
+    font-weight: 400;
+    line-height: 1.5;
+  }
+  @media (max-width: 1100px) {
+    .fg-cards .fg-page-head__title { font-size: 42px; }
+  }
+  @media (max-width: 880px) {
+    .fg-cards .fg-page-head__title { font-size: 36px; }
+    .fg-cards .fg-page-head { margin-bottom: 28px; }
+  }
+  @media (max-width: 480px) {
+    .fg-cards .fg-page-head__title { font-size: 28px; }
+    .fg-cards .fg-page-head__sub { font-size: 14px; }
+  }
+
+  /* ============ TOP-10 PLACEHOLDER ============ */
+  .fg-cards .fg-top10 {
+    margin: 0 0 48px 0;
+    padding: 36px clamp(24px, 4vw, 44px);
+    background: linear-gradient(180deg, var(--paper-warm) 0%, #f3eddc 100%);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    position: relative;
+    overflow: hidden;
+  }
+  .fg-cards .fg-top10::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    width: 4px;
+    background: var(--brand-red);
+  }
+  .fg-cards .fg-top10__label {
+    display: inline-block;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--brand-red);
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+  .fg-cards .fg-top10__title {
+    font-size: 26px;
+    font-weight: 600;
+    line-height: 1.2;
+    margin-bottom: 12px;
+    color: var(--ink);
+    letter-spacing: -0.015em;
+  }
+  .fg-cards .fg-top10__hint {
+    font-size: 15px;
+    color: var(--ink-soft);
+    max-width: 720px;
+    line-height: 1.55;
+  }
+  @media (max-width: 480px) {
+    .fg-cards .fg-top10 { padding: 26px 22px; margin-bottom: 36px; }
+    .fg-cards .fg-top10__title { font-size: 22px; }
+    .fg-cards .fg-top10__hint { font-size: 14px; }
+  }
+
+  /* ============ SECTION TITLE ============ */
+  .fg-cards .fg-section-head {
+    margin: 0 0 24px 0;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .fg-cards .fg-section-head__title {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+  .fg-cards .fg-section-head__count {
+    font-size: 13px;
+    color: var(--ink-faint);
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ============ ENTRIES LIST ============ */
+  .fg-cards .fg-entries {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .fg-cards .fg-entry {
+    background: var(--paper-deep);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    transition: border-color 0.15s ease, box-shadow 0.2s ease;
+    overflow: hidden;
+  }
+  .fg-cards .fg-entry:hover {
+    border-color: var(--ink-faint);
+    box-shadow: var(--shadow-card);
+  }
+  .fg-cards .fg-entry.is-open {
+    border-color: var(--ink-soft);
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Card header (clickable) */
+  .fg-cards .fg-entry__head {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 64px 1fr auto 28px;
+    align-items: center;
+    gap: 18px;
+    padding: 18px 22px;
+    cursor: pointer;
+    text-align: left;
+    background: transparent;
+    transition: background-color 0.15s ease;
+  }
+  .fg-cards .fg-entry__head:hover { background: var(--paper-warm); }
+  .fg-cards .fg-entry.is-open .fg-entry__head { background: var(--paper-warm); }
+
+  .fg-cards .fg-entry__rank {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--brand-red);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    text-align: center;
+  }
+  .fg-cards .fg-entry__name-block {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .fg-cards .fg-entry__name {
+    display: block;
+    font-size: 19px;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    word-break: break-word;
+  }
+  .fg-cards .fg-entry__brief {
+    display: block;
+    font-size: 13px;
+    color: var(--ink-faint);
+    line-height: 1.4;
+    letter-spacing: 0.005em;
+  }
+  .fg-cards .fg-entry__brief b {
+    color: var(--ink-soft);
+    font-weight: 500;
+  }
+  .fg-cards .fg-entry__segment {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    padding: 5px 11px;
+    background: var(--paper);
+    border-radius: 100px;
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+  }
+  .fg-cards .fg-entry__segment.is-leader {
+    color: var(--brand-red);
+    background: rgba(183, 36, 36, 0.08);
+  }
+  .fg-cards .fg-entry__chevron {
+    color: var(--ink-faint);
+    font-size: 22px;
+    line-height: 1;
+    transition: transform 0.2s ease, color 0.15s ease;
+    text-align: center;
+    font-weight: 300;
+  }
+  .fg-cards .fg-entry__head[aria-expanded="true"] .fg-entry__chevron {
+    transform: rotate(180deg);
+    color: var(--ink-soft);
+  }
+
+  /* Card detail body */
+  .fg-cards .fg-entry__detail {
+    border-top: 1px solid var(--rule-soft);
+    padding: 24px 26px 28px 84px;
+    background: var(--paper-deep);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 26px 36px;
+  }
+  .fg-cards .fg-entry__detail[hidden] { display: none; }
+
+  .fg-cards .fg-detail-block__title {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 600;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+
+  /* Props (label : value rows) */
+  .fg-cards .fg-props {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+  .fg-cards .fg-prop {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: baseline;
+    padding-bottom: 8px;
+    border-bottom: 1px dotted var(--rule-soft);
+  }
+  .fg-cards .fg-prop:last-child { border-bottom: none; padding-bottom: 0; }
+  .fg-cards .fg-prop__key {
+    font-size: 14px;
+    color: var(--ink-soft);
+    line-height: 1.4;
+  }
+  .fg-cards .fg-prop__val {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.005em;
+    white-space: nowrap;
+  }
+  .fg-cards .fg-prop__val--empty {
+    color: var(--ink-faint);
+    font-weight: 400;
+    font-style: italic;
+    font-size: 14px;
+  }
+  .fg-cards .fg-prop__val small {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--ink-faint);
+    margin-left: 4px;
+    letter-spacing: 0.02em;
+  }
+
+  /* BTG list */
+  .fg-cards .fg-btg {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 18px;
+  }
+  .fg-cards .fg-btg__row {
+    display: grid;
+    grid-template-columns: 12px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 0;
+  }
+  .fg-cards .fg-btg__dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1px solid rgba(0,0,0,0.12);
+  }
+  .fg-cards .fg-btg__dot--red       { background: #722f37; }
+  .fg-cards .fg-btg__dot--white     { background: #e8d690; }
+  .fg-cards .fg-btg__dot--rose      { background: #d97a8f; }
+  .fg-cards .fg-btg__dot--sparkling { background: #f4e4a8; border-color: #b89a3a; }
+  .fg-cards .fg-btg__dot--orange    { background: #d68a3a; }
+  .fg-cards .fg-btg__dot--sweet     { background: #6a3a3a; }
+  .fg-cards .fg-btg__dot--zero      { background: var(--paper); border-color: var(--rule); opacity: 0.5; }
+  .fg-cards .fg-btg__label {
+    font-size: 14px;
+    color: var(--ink-soft);
+  }
+  .fg-cards .fg-btg__row.is-zero .fg-btg__label { color: var(--ink-faint); }
+  .fg-cards .fg-btg__count {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .fg-cards .fg-btg__row.is-zero .fg-btg__count { color: var(--ink-faint); font-weight: 400; }
+
+  .fg-cards .fg-btg-empty {
+    font-size: 14px;
+    color: var(--ink-faint);
+    font-style: italic;
+    line-height: 1.5;
+  }
+
+  /* Responsive: tablet */
+  @media (max-width: 880px) {
+    .fg-cards .fg-entry__head {
+      grid-template-columns: 48px 1fr 24px;
+      gap: 14px;
+      padding: 16px 18px;
+    }
+    .fg-cards .fg-entry__rank { font-size: 24px; }
+    .fg-cards .fg-entry__name { font-size: 17px; }
+    .fg-cards .fg-entry__brief { font-size: 12px; }
+    .fg-cards .fg-entry__segment {
+      grid-column: 2;
+      grid-row: 2;
+      justify-self: start;
+      margin-top: 4px;
+    }
+    .fg-cards .fg-entry__chevron { grid-column: 3; grid-row: 1; align-self: center; }
+    .fg-cards .fg-entry__detail {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 22px;
+      padding: 22px 18px 24px;
+    }
+  }
+
+  /* Responsive: mobile */
+  @media (max-width: 480px) {
+    .fg-cards .fg-entry__head {
+      grid-template-columns: 40px 1fr 20px;
+      gap: 12px;
+      padding: 14px 14px;
+    }
+    .fg-cards .fg-entry__rank { font-size: 22px; }
+    .fg-cards .fg-entry__name { font-size: 16px; }
+    .fg-cards .fg-entry__brief { font-size: 12px; }
+    .fg-cards .fg-entry__detail { padding: 20px 14px 22px; gap: 18px; }
+    .fg-cards .fg-btg { grid-template-columns: minmax(0, 1fr); }
+    .fg-cards .fg-prop__val { font-size: 14px; }
+    .fg-cards .fg-prop__key { font-size: 13px; }
+  }
+
+  /* Footer note */
+  .fg-cards .fg-footnote {
+    margin-top: 40px;
+    padding-top: 22px;
+    border-top: 1px solid var(--rule);
+    font-size: 13px;
+    color: var(--ink-faint);
+    line-height: 1.55;
+  }
+  .fg-cards .fg-footnote a {
+    color: var(--wine);
+    text-decoration: underline;
+    text-decoration-color: rgba(183, 36, 36, 0.3);
+    text-underline-offset: 3px;
+  }
+  .fg-cards .fg-footnote a:hover {
+    text-decoration-color: var(--wine);
+  }
+</style>
+</head>
+<body>
+
+<div class="fg-cards">
+  <div class="fg-wrap">
+
+    <header class="fg-page-head">
+      <span class="fg-page-head__label" id="fg-page-label">Рейтинг</span>
+      <h1 class="fg-page-head__title" id="fg-page-title">Лучшие российские винные карты</h1>
+      <p class="fg-page-head__sub" id="fg-page-sub">Москва · май 2026</p>
+    </header>
+
+    <section class="fg-top10" aria-label="Топ-10 (раздел в разработке)">
+      <span class="fg-top10__label">Топ-10</span>
+      <h2 class="fg-top10__title">Подробные карточки лидеров — скоро</h2>
+      <p class="fg-top10__hint">
+        Здесь появятся карточки топ-10 ресторанов с раскрытием сильных сторон каждой винной карты: глубина, география, авторские решения, бокальная программа.
+      </p>
+    </section>
+
+    <section class="fg-section">
+      <div class="fg-section-head">
+        <h2 class="fg-section-head__title">Все рестораны рейтинга</h2>
+        <span class="fg-section-head__count" id="fg-count">50 заведений</span>
+      </div>
+      <div class="fg-entries" id="fg-entries"></div>
+    </section>
+
+    <p class="fg-footnote">
+      Рейтинг построен по методологии Wine Scoring v5.22 (19 балльных блоков, 100-балльная шкала). На карточках показан срез ключевых характеристик карты — детали и баллы доступны в полной методике.
+    </p>
+
+  </div>
+</div>
+
+<script id="fg-cards-data" type="application/json">
+{"rating_title":"Лучшие российские винные карты","rating_subtitle":"Москва · май 2026","restaurants":[{"rank":1,"name":"Машенька","segment":"🏆 Лидер","sommelier":"","depth":130,"mono_grapes":43,"blends":21,"producers":61,"regions":10,"types_in_card":"6/6","autochthons":"7 : 14","btg":{"red":5,"white":5,"rose":1,"sparkling":3,"orange":1,"sweet":1},"btg_types_count":"6/6","median_glass_rub":1300,"median_bottle_rub":9000},{"rank":2,"name":"Румяна","segment":"🏆 Лидер","sommelier":"","depth":91,"mono_grapes":29,"blends":22,"producers":41,"regions":13,"types_in_card":"5/6","autochthons":"5 : 19","btg":{"red":6,"white":4,"rose":2,"sparkling":2,"orange":1,"sweet":2},"btg_types_count":"6/6","median_glass_rub":710,"median_bottle_rub":4800},{"rank":3,"name":"Айна","segment":"🏆 Лидер","sommelier":"","depth":86,"mono_grapes":27,"blends":23,"producers":45,"regions":13,"types_in_card":"5/6","autochthons":"6 : 12","btg":{"red":5,"white":5,"rose":1,"sparkling":1,"orange":1,"sweet":1},"btg_types_count":"6/6","median_glass_rub":1200,"median_bottle_rub":8250},{"rank":4,"name":"Twins Garden","segment":"🏆 Лидер","sommelier":"","depth":91,"mono_grapes":23,"blends":20,"producers":44,"regions":12,"types_in_card":"4/6","autochthons":"9 : 17","btg":{"red":3,"white":3,"rose":0,"sparkling":2,"orange":0,"sweet":2},"btg_types_count":"4/6","median_glass_rub":1850,"median_bottle_rub":7900},{"rank":5,"name":"Urban Winery","segment":"🏆 Лидер","sommelier":"","depth":57,"mono_grapes":27,"blends":13,"producers":37,"regions":11,"types_in_card":"6/6","autochthons":"4 : 5","btg":{"red":11,"white":4,"rose":0,"sparkling":4,"orange":2,"sweet":2},"btg_types_count":"5/6","median_glass_rub":990,"median_bottle_rub":6600},{"rank":6,"name":"HookahPlace Ultimate","segment":"🏆 Лидер","sommelier":"","depth":68,"mono_grapes":23,"blends":16,"producers":29,"regions":9,"types_in_card":"6/6","autochthons":"5 : 8","btg":{"red":3,"white":3,"rose":1,"sparkling":1,"orange":1,"sweet":3},"btg_types_count":"6/6","median_glass_rub":1300,"median_bottle_rub":7500},{"rank":7,"name":"uhvat","segment":"🏆 Лидер","sommelier":"","depth":42,"mono_grapes":25,"blends":10,"producers":23,"regions":9,"types_in_card":"6/6","autochthons":"4 : 7","btg":{"red":2,"white":2,"rose":1,"sparkling":1,"orange":1,"sweet":2},"btg_types_count":"6/6","median_glass_rub":1100,"median_bottle_rub":9600},{"rank":8,"name":"ERWIN.Павильон.Патрики","segment":"🏆 Лидер","sommelier":"","depth":45,"mono_grapes":25,"blends":6,"producers":28,"regions":10,"types_in_card":"6/6","autochthons":"4 : 6","btg":{"red":1,"white":2,"rose":1,"sparkling":1,"orange":1,"sweet":1},"btg_types_count":"6/6","median_glass_rub":1000,"median_bottle_rub":7500},{"rank":9,"name":"Pharmacy","segment":"🏆 Лидер","sommelier":"","depth":43,"mono_grapes":22,"blends":18,"producers":22,"regions":11,"types_in_card":"5/6","autochthons":"12 : 12","btg":{"red":2,"white":2,"rose":1,"sparkling":0,"orange":1,"sweet":3},"btg_types_count":"5/6","median_glass_rub":980,"median_bottle_rub":6900},{"rank":10,"name":"Турандот","segment":"🏆 Лидер","sommelier":"","depth":76,"mono_grapes":22,"blends":15,"producers":34,"regions":11,"types_in_card":"4/6","autochthons":"4 : 8","btg":{"red":1,"white":1,"rose":1,"sparkling":1,"orange":0,"sweet":1},"btg_types_count":"5/6","median_glass_rub":1350,"median_bottle_rub":13100},{"rank":11,"name":"Вино и другие лекарства","segment":"🥇 Топ-50","sommelier":"","depth":56,"mono_grapes":20,"blends":17,"producers":24,"regions":12,"types_in_card":"4/6","autochthons":"7 : 11","btg":{"red":3,"white":3,"rose":1,"sparkling":0,"orange":0,"sweet":3},"btg_types_count":"4/6","median_glass_rub":970,"median_bottle_rub":7800},{"rank":12,"name":"#СибирьСибирь","segment":"🥇 Топ-50","sommelier":"","depth":47,"mono_grapes":19,"blends":11,"producers":27,"regions":12,"types_in_card":"5/6","autochthons":"4 : 7","btg":{"red":1,"white":1,"rose":1,"sparkling":1,"orange":0,"sweet":0},"btg_types_count":"4/6","median_glass_rub":980,"median_bottle_rub":8800},{"rank":13,"name":"Москва","segment":"🥇 Топ-50","sommelier":"","depth":36,"mono_grapes":17,"blends":8,"producers":19,"regions":8,"types_in_card":"5/6","autochthons":"5 : 6","btg":{"red":4,"white":4,"rose":1,"sparkling":1,"orange":0,"sweet":2},"btg_types_count":"5/6","median_glass_rub":925,"median_bottle_rub":6950},{"rank":14,"name":"Рыба мечты","segment":"🥇 Топ-50","sommelier":"","depth":41,"mono_grapes":15,"blends":11,"producers":23,"regions":9,"types_in_card":"5/6","autochthons":"5 : 7","btg":{"red":1,"white":1,"rose":0,"sparkling":1,"orange":0,"sweet":0},"btg_types_count":"3/6","median_glass_rub":1650,"median_bottle_rub":11900},{"rank":15,"name":"White Rabbit","segment":"🥇 Топ-50","sommelier":"","depth":55,"mono_grapes":18,"blends":12,"producers":32,"regions":9,"types_in_card":"4/6","autochthons":"4 : 8","btg":{"red":1,"white":1,"rose":1,"sparkling":0,"orange":0,"sweet":2},"btg_types_count":"4/6","median_glass_rub":1100,"median_bottle_rub":10800},{"rank":16,"name":"Beluga","segment":"🥇 Топ-50","sommelier":"","depth":62,"mono_grapes":16,"blends":24,"producers":29,"regions":8,"types_in_card":"3/6","autochthons":"4 : 8","btg":{"red":1,"white":1,"rose":0,"sparkling":1,"orange":0,"sweet":0},"btg_types_count":"3/6","median_glass_rub":950,"median_bottle_rub":8850},{"rank":17,"name":"Калинка","segment":"🥇 Топ-50","sommelier":"","depth":35,"mono_grapes":13,"blends":15,"producers":19,"regions":8,"types_in_card":"3/6","autochthons":"4 : 6","btg":{"red":3,"white":2,"rose":1,"sparkling":2,"orange":0,"sweet":0},"btg_types_count":"4/6","median_glass_rub":800,"median_bottle_rub":6900},{"rank":18,"name":"Ruski","segment":"🥇 Топ-50","sommelier":"","depth":39,"mono_grapes":12,"blends":15,"producers":25,"regions":7,"types_in_card":"4/6","autochthons":"3 : 6","btg":{"red":1,"white":2,"rose":1,"sparkling":1,"orange":0,"sweet":1},"btg_types_count":"5/6","median_glass_rub":1100,"median_bottle_rub":8940},{"rank":19,"name":"Bigati Bar","segment":"🥇 Топ-50","sommelier":"","depth":35,"mono_grapes":17,"blends":13,"producers":19,"regions":9,"types_in_card":"3/6","autochthons":"5 : 6","btg":{"red":2,"white":0,"rose":0,"sparkling":2,"orange":0,"sweet":0},"btg_types_count":"2/6","median_glass_rub":720,"median_bottle_rub":5150},{"rank":20,"name":"Savva","segment":"🥇 Топ-50","sommelier":"","depth":50,"mono_grapes":18,"blends":10,"producers":25,"regions":8,"types_in_card":"4/6","autochthons":"4 : 5","btg":{"red":2,"white":1,"rose":1,"sparkling":0,"orange":0,"sweet":0},"btg_types_count":"3/6","median_glass_rub":1500,"median_bottle_rub":10200},{"rank":21,"name":"Bjorn","segment":"🥇 Топ-50","sommelier":"","depth":33,"mono_grapes":19,"blends":7,"producers":19,"regions":8,"types_in_card":"6/6","autochthons":"2 : 4","btg":{"red":2,"white":1,"rose":1,"sparkling":1,"orange":1,"sweet":0},"btg_types_count":"5/6","median_glass_rub":820,"median_bottle_rub":6750},{"rank":22,"name":"Selfie","segment":"🥇 Топ-50","sommelier":"","depth":35,"mono_grapes":18,"blends":8,"producers":21,"regions":10,"types_in_card":"5/6","autochthons":"4 : 4","btg":{"red":0,"white":0,"rose":1,"sparkling":0,"orange":0,"sweet":2},"btg_types_count":"2/6","median_glass_rub":1800,"median_bottle_rub":10800},{"rank":23,"name":"Dr. Живаго","segment":"🥇 Топ-50","sommelier":"","depth":44,"mono_grapes":21,"blends":7,"producers":33,"regions":8,"types_in_card":"3/6","autochthons":"3 : 2","btg":{"red":1,"white":2,"rose":0,"sparkling":1,"orange":0,"sweet":0},"btg_types_count":"3/6","median_glass_rub":990,"median_bottle_rub":6900},{"rank":24,"name":"Поле","segment":"🥇 Топ-50","sommelier":"","depth":30,"mono_grapes":12,"blends":9,"producers":21,"regions":8,"types_in_card":"6/6","autochthons":"4 : 3","btg":{"red":1,"white":0,"rose":0,"sparkling":1,"orange":0,"sweet":1},"btg_types_count":"3/6","median_glass_rub":1250,"median_bottle_rub":7950},{"rank":25,"name":"Рыбы Нет","segment":"🥇 Топ-50","sommelier":"","depth":38,"mono_grapes":18,"blends":12,"producers":19,"regions":7,"types_in_card":"5/6","autochthons":"4 : 5","btg":{"red":2,"white":1,"rose":0,"sparkling":1,"orange":0,"sweet":0},"btg_types_count":"3/6","median_glass_rub":905,"median_bottle_rub":8250},{"rank":26,"name":"Восход","segment":"🥇 Топ-50","sommelier":"","depth":51,"mono_grapes":17,"blends":15,"producers":22,"regions":7,"types_in_card":"5/6","autochthons":"4 : 4","btg":{"red":2,"white":3,"rose":1,"sparkling":0,"orange":0,"sweet":0},"btg_types_count":"3/6","median_glass_rub":950,"median_bottle_rub":5550},{"rank":27,"name":"Maroon","segment":"🥇 Топ-50","sommelier":"","depth":46,"mono_grapes":17,"blends":15,"producers":13,"regions":7,"types_in_card":"5/6","autochthons":"3 : 8","btg":{"red":7,"white":4,"rose":1,"sparkling":0,"orange":1,"sweet":2},"btg_types_count":"5/6","median_glass_rub":1575,"median_bottle_rub":6900},{"rank":28,"name":"Lúwo","segment":"🥇 Топ-50","sommelier":"","depth":24,"mono_grapes":16,"blends":4,"producers":12,"regions":8,"types_in_card":"6/6","autochthons":"3 : 4","btg":{"red":1,"white":1,"rose":0,"sparkling":1,"orange":1,"sweet":2},"btg_types_count":"5/6","median_glass_rub":1025,"median_bottle_rub":7200},{"rank":29,"name":"Матрешка","segment":"🥇 Топ-50","sommelier":"","depth":24,"mono_grapes":10,"blends":10,"producers":15,"regions":7,"types_in_card":"6/6","autochthons":"3 : 3","btg":{"red":1,"white":1,"rose":1,"sparkling":1,"orange":2,"sweet":1},"btg_types_count":"6/6","median_glass_rub":1250,"median_bottle_rub":8700},{"rank":30,"name":"Пушкин","segment":"🥇 Топ-50","sommelier":"","depth":41,"mono_grapes":15,"blends":10,"producers":22,"regions":8,"types_in_card":"4/6","autochthons":"2 : 3","btg":{"red":1,"white":1,"rose":1,"sparkling":1,"orange":0,"sweet":0},"btg_types_count":"4/6","median_glass_rub":1122,"median_bottle_rub":10900},{"rank":31,"name":"Modus","segment":"🥇 Топ-50","sommelier":"","depth":31,"mono_grapes":14,"blends":9,"producers":18,"regions":8,"types_in_card":"5/6","autochthons":"3 : 6","btg":{"red":1,"white":0,"rose":0,"sparkling":1,"orange":0,"sweet":0},"btg_types_count":"2/6","median_glass_rub":1410,"median_bottle_rub":8500},{"rank":32,"name":"Soma","segment":"🥇 Топ-50","sommelier":"","depth":22,"mono_grapes":11,"blends":6,"producers":16,"regions":7,"types_in_card":"6/6","autochthons":"2 : 2","btg":{"red":1,"white":2,"rose":2,"sparkling":1,"orange":1,"sweet":1},"btg_types_count":"6/6","median_glass_rub":800,"median_bottle_rub":6900},{"rank":33,"name":"SAVOY","segment":"🥇 Топ-50","sommelier":"","depth":25,"mono_grapes":13,"blends":6,"producers":16,"regions":7,"types_in_card":"6/6","autochthons":"3 : 5","btg":{"red":3,"white":1,"rose":0,"sparkling":1,"orange":1,"sweet":0},"btg_types_count":"4/6","median_glass_rub":1200,"median_bottle_rub":8200},{"rank":34,"name":"Шаляпин","segment":"🥇 Топ-50","sommelier":"","depth":25,"mono_grapes":12,"blends":6,"producers":16,"regions":8,"types_in_card":"5/6","autochthons":"2 : 2","btg":{"red":1,"white":1,"rose":2,"sparkling":2,"orange":1,"sweet":0},"btg_types_count":"5/6","median_glass_rub":1600,"median_bottle_rub":10500},{"rank":35,"name":"Рыба моя","segment":"🥇 Топ-50","sommelier":"","depth":21,"mono_grapes":14,"blends":3,"producers":17,"regions":9,"types_in_card":"6/6","autochthons":"1 : 1","btg":{"red":3,"white":5,"rose":0,"sparkling":0,"orange":1,"sweet":1},"btg_types_count":"4/6","median_glass_rub":1775,"median_bottle_rub":10000},{"rank":36,"name":"TEMU","segment":"🥇 Топ-50","sommelier":"","depth":24,"mono_grapes":13,"blends":8,"producers":15,"regions":7,"types_in_card":"4/6","autochthons":"4 : 4","btg":{"red":1,"white":2,"rose":0,"sparkling":0,"orange":0,"sweet":1},"btg_types_count":"3/6","median_glass_rub":1200,"median_bottle_rub":10700},{"rank":37,"name":"Wine Region","segment":"🥇 Топ-50","sommelier":"","depth":41,"mono_grapes":16,"blends":9,"producers":21,"regions":8,"types_in_card":"4/6","autochthons":"4 : 7","btg":{"red":1,"white":0,"rose":0,"sparkling":0,"orange":0,"sweet":0},"btg_types_count":"1/6","median_glass_rub":1300,"median_bottle_rub":7550},{"rank":38,"name":"MAYA","segment":"🥇 Топ-50","sommelier":"","depth":37,"mono_grapes":21,"blends":4,"producers":23,"regions":7,"types_in_card":"4/6","autochthons":"2 : 0","btg":{"red":1,"white":1,"rose":1,"sparkling":0,"orange":0,"sweet":1},"btg_types_count":"4/6","median_glass_rub":1095,"median_bottle_rub":7500},{"rank":39,"name":"Сахалин","segment":"🥇 Топ-50","sommelier":"","depth":31,"mono_grapes":12,"blends":11,"producers":18,"regions":7,"types_in_card":"6/6","autochthons":"3 : 2","btg":{"red":0,"white":1,"rose":1,"sparkling":0,"orange":0,"sweet":1},"btg_types_count":"3/6","median_glass_rub":1800,"median_bottle_rub":9600},{"rank":40,"name":"Touché","segment":"🥇 Топ-50","sommelier":"","depth":23,"mono_grapes":12,"blends":8,"producers":12,"regions":7,"types_in_card":"6/6","autochthons":"3 : 4","btg":{"red":2,"white":1,"rose":0,"sparkling":0,"orange":0,"sweet":1},"btg_types_count":"3/6","median_glass_rub":1215,"median_bottle_rub":6300},{"rank":41,"name":"IL Ristorante","segment":"🥇 Топ-50","sommelier":"","depth":32,"mono_grapes":15,"blends":9,"producers":17,"regions":7,"types_in_card":"5/6","autochthons":"3 : 4","btg":{"red":1,"white":1,"rose":0,"sparkling":0,"orange":0,"sweet":0},"btg_types_count":"2/6","median_glass_rub":1600,"median_bottle_rub":10400},{"rank":42,"name":"Savras","segment":"🥇 Топ-50","sommelier":"","depth":25,"mono_grapes":10,"blends":5,"producers":16,"regions":9,"types_in_card":"6/6","autochthons":"1 : 1","btg":{"red":1,"white":1,"rose":1,"sparkling":0,"orange":0,"sweet":0},"btg_types_count":"3/6","median_glass_rub":1800,"median_bottle_rub":11000},{"rank":43,"name":"Chef's Table by White Rabbit","segment":"🥇 Топ-50","sommelier":"","depth":26,"mono_grapes":14,"blends":6,"producers":17,"regions":8,"types_in_card":"5/6","autochthons":"2 : 1","btg":{"red":1,"white":1,"rose":0,"sparkling":0,"orange":0,"sweet":2},"btg_types_count":"3/6","median_glass_rub":950,"median_bottle_rub":8900},{"rank":44,"name":"Шануар","segment":"🥇 Топ-50","sommelier":"","depth":24,"mono_grapes":11,"blends":4,"producers":12,"regions":7,"types_in_card":"6/6","autochthons":"1 : 1","btg":{"red":1,"white":2,"rose":1,"sparkling":1,"orange":0,"sweet":1},"btg_types_count":"5/6","median_glass_rub":1140,"median_bottle_rub":8900},{"rank":45,"name":"Niki","segment":"🥇 Топ-50","sommelier":"","depth":34,"mono_grapes":11,"blends":11,"producers":16,"regions":6,"types_in_card":"4/6","autochthons":"2 : 3","btg":{"red":1,"white":1,"rose":1,"sparkling":1,"orange":0,"sweet":1},"btg_types_count":"5/6","median_glass_rub":1100,"median_bottle_rub":6700},{"rank":46,"name":"Brasserie Кузнецкий Мост","segment":"🥇 Топ-50","sommelier":"","depth":23,"mono_grapes":13,"blends":4,"producers":15,"regions":7,"types_in_card":"5/6","autochthons":"2 : 2","btg":{"red":1,"white":1,"rose":1,"sparkling":1,"orange":0,"sweet":0},"btg_types_count":"4/6","median_glass_rub":1300,"median_bottle_rub":9300},{"rank":47,"name":"Культура встречи","segment":"🥇 Топ-50","sommelier":"","depth":20,"mono_grapes":13,"blends":5,"producers":9,"regions":5,"types_in_card":"5/6","autochthons":"2 : 3","btg":{"red":2,"white":3,"rose":1,"sparkling":2,"orange":0,"sweet":0},"btg_types_count":"4/6","median_glass_rub":900,"median_bottle_rub":6100},{"rank":48,"name":"0.75 please moscow","segment":"🥇 Топ-50","sommelier":"","depth":21,"mono_grapes":10,"blends":2,"producers":18,"regions":9,"types_in_card":"4/6","autochthons":"2 : 2","btg":{"red":1,"white":1,"rose":0,"sparkling":0,"orange":0,"sweet":0},"btg_types_count":"2/6","median_glass_rub":1100,"median_bottle_rub":12000},{"rank":49,"name":"Mushrooms","segment":"🥇 Топ-50","sommelier":"","depth":22,"mono_grapes":11,"blends":7,"producers":14,"regions":7,"types_in_card":"5/6","autochthons":"0 : 0","btg":{"red":1,"white":2,"rose":1,"sparkling":1,"orange":1,"sweet":0},"btg_types_count":"5/6","median_glass_rub":1225,"median_bottle_rub":8300},{"rank":50,"name":"Обломов","segment":"🥇 Топ-50","sommelier":"","depth":25,"mono_grapes":9,"blends":11,"producers":13,"regions":7,"types_in_card":"5/6","autochthons":"3 : 3","btg":{"red":1,"white":1,"rose":0,"sparkling":1,"orange":0,"sweet":0},"btg_types_count":"3/6","median_glass_rub":830,"median_bottle_rub":5760}]}
+
+</script>
+
+<script>
+(function () {
+  "use strict";
+
+  const root = document.querySelector(".fg-cards");
+  const entriesEl = document.getElementById("fg-entries");
+  const dataEl = document.getElementById("fg-cards-data");
+  const titleEl = document.getElementById("fg-page-title");
+  const subEl = document.getElementById("fg-page-sub");
+  const countEl = document.getElementById("fg-count");
+
+  let DATA = null;
+  try {
+    DATA = JSON.parse(dataEl.textContent);
+  } catch (e) {
+    console.error("fg-cards: failed to parse data", e);
+    entriesEl.innerHTML = '<p style="color:#7a6f60; padding: 20px;">Не удалось загрузить данные рейтинга.</p>';
+    return;
+  }
+
+  if (DATA.rating_title) titleEl.textContent = DATA.rating_title;
+  if (DATA.rating_subtitle) subEl.textContent = DATA.rating_subtitle;
+  if (Array.isArray(DATA.restaurants)) {
+    countEl.textContent = DATA.restaurants.length + " " + pluralRu(DATA.restaurants.length, "заведение", "заведения", "заведений");
+  }
+
+  function pluralRu(n, one, few, many) {
+    const a = Math.abs(n) % 100;
+    const b = a % 10;
+    if (a > 10 && a < 20) return many;
+    if (b > 1 && b < 5) return few;
+    if (b === 1) return one;
+    return many;
+  }
+
+  function escapeHtml(s) {
+    if (s === null || s === undefined) return "";
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function fmtNum(n) {
+    if (n === null || n === undefined || n === "") return "—";
+    if (typeof n === "number") {
+      return n.toLocaleString("ru-RU");
+    }
+    return String(n);
+  }
+
+  function fmtRub(n) {
+    if (n === null || n === undefined || n === "") return "—";
+    return Number(n).toLocaleString("ru-RU") + " ₽";
+  }
+
+  function isLeader(seg) {
+    if (!seg) return false;
+    return /Лидер/i.test(seg);
+  }
+
+  const BTG_COLORS = [
+    { key: "red",       label: "Красные"   },
+    { key: "white",     label: "Белые"     },
+    { key: "rose",      label: "Розовые"   },
+    { key: "sparkling", label: "Игристые"  },
+    { key: "orange",    label: "Оранжевые" },
+    { key: "sweet",     label: "Сладкие"   },
+  ];
+
+  function btgTotal(btg) {
+    if (!btg) return 0;
+    return BTG_COLORS.reduce(function (acc, c) {
+      const v = btg[c.key];
+      return acc + (typeof v === "number" ? v : 0);
+    }, 0);
+  }
+
+  function buildBriefLine(r) {
+    const parts = [];
+    if (r.depth) parts.push("<b>" + escapeHtml(fmtNum(r.depth)) + "</b> " + pluralRu(r.depth, "бутылка", "бутылки", "бутылок"));
+    const total = btgTotal(r.btg);
+    if (total > 0) parts.push("<b>" + total + "</b> по бокалам");
+    if (r.types_in_card) parts.push("<b>" + escapeHtml(r.types_in_card) + "</b> типов вин");
+    return parts.join(" · ");
+  }
+
+  function buildEntry(r, index) {
+    const brief = buildBriefLine(r);
+    const segLeader = isLeader(r.segment);
+    const btgTotalN = btgTotal(r.btg);
+
+    const sommelierVal = r.sommelier && String(r.sommelier).trim()
+      ? '<dd class="fg-prop__val">' + escapeHtml(r.sommelier) + '</dd>'
+      : '<dd class="fg-prop__val fg-prop__val--empty">не указан</dd>';
+
+    const autochVal = (function () {
+      if (!r.autochthons) return '<dd class="fg-prop__val">—</dd>';
+      const parts = String(r.autochthons).split(":").map(function (s) { return s.trim(); });
+      if (parts.length === 2) {
+        return '<dd class="fg-prop__val">' + escapeHtml(parts[0]) + ' <small>сорта</small> · ' + escapeHtml(parts[1]) + ' <small>бутылки</small></dd>';
+      }
+      return '<dd class="fg-prop__val">' + escapeHtml(r.autochthons) + '</dd>';
+    })();
+
+    let btgHtml = '';
+    if (btgTotalN === 0) {
+      btgHtml = '<p class="fg-btg-empty">Бокальной программы нет</p>';
+    } else {
+      btgHtml = '<ul class="fg-btg">' + BTG_COLORS.map(function (c) {
+        const n = (r.btg && typeof r.btg[c.key] === "number") ? r.btg[c.key] : 0;
+        const cls = n === 0 ? ' is-zero' : '';
+        const dotCls = n === 0 ? 'fg-btg__dot--zero' : 'fg-btg__dot--' + c.key;
+        return '<li class="fg-btg__row' + cls + '">' +
+          '<span class="fg-btg__dot ' + dotCls + '" aria-hidden="true"></span>' +
+          '<span class="fg-btg__label">' + escapeHtml(c.label) + '</span>' +
+          '<span class="fg-btg__count">' + n + '</span>' +
+        '</li>';
+      }).join('') + '</ul>';
+    }
+
+    const detailHtml =
+      '<div class="fg-entry__detail" hidden>' +
+        '<div class="fg-detail-block">' +
+          '<h4 class="fg-detail-block__title">Винная карта</h4>' +
+          '<dl class="fg-props">' +
+            '<div class="fg-prop"><dt class="fg-prop__key">Сомелье</dt>' + sommelierVal + '</div>' +
+            '<div class="fg-prop"><dt class="fg-prop__key">Бутылок в карте</dt><dd class="fg-prop__val">' + escapeHtml(fmtNum(r.depth)) + '</dd></div>' +
+            '<div class="fg-prop"><dt class="fg-prop__key">Моно-сортовых вин</dt><dd class="fg-prop__val">' + escapeHtml(fmtNum(r.mono_grapes)) + '</dd></div>' +
+            '<div class="fg-prop"><dt class="fg-prop__key">Бленды</dt><dd class="fg-prop__val">' + escapeHtml(fmtNum(r.blends)) + '</dd></div>' +
+            '<div class="fg-prop"><dt class="fg-prop__key">Хозяйств-производителей</dt><dd class="fg-prop__val">' + escapeHtml(fmtNum(r.producers)) + '</dd></div>' +
+            '<div class="fg-prop"><dt class="fg-prop__key">Регионов</dt><dd class="fg-prop__val">' + escapeHtml(fmtNum(r.regions)) + '</dd></div>' +
+            '<div class="fg-prop"><dt class="fg-prop__key">Типы вин в карте</dt><dd class="fg-prop__val">' + escapeHtml(r.types_in_card || '—') + '</dd></div>' +
+            '<div class="fg-prop"><dt class="fg-prop__key">Автохтоны</dt>' + autochVal + '</div>' +
+            '<div class="fg-prop"><dt class="fg-prop__key">Медиана бутылки</dt><dd class="fg-prop__val">' + escapeHtml(fmtRub(r.median_bottle_rub)) + '</dd></div>' +
+          '</dl>' +
+        '</div>' +
+        '<div class="fg-detail-block">' +
+          '<h4 class="fg-detail-block__title">По бокалам' + (btgTotalN > 0 ? ' · ' + btgTotalN + ' ' + pluralRu(btgTotalN, "позиция", "позиции", "позиций") : '') + '</h4>' +
+          btgHtml +
+          (btgTotalN > 0 ? '<dl class="fg-props" style="margin-top: 18px;">' +
+            '<div class="fg-prop"><dt class="fg-prop__key">Типы в БТГ</dt><dd class="fg-prop__val">' + escapeHtml(r.btg_types_count || '—') + '</dd></div>' +
+            '<div class="fg-prop"><dt class="fg-prop__key">Медиана бокала</dt><dd class="fg-prop__val">' + escapeHtml(fmtRub(r.median_glass_rub)) + '</dd></div>' +
+          '</dl>' : '') +
+        '</div>' +
+      '</div>';
+
+    const segHtml = r.segment
+      ? '<span class="fg-entry__segment' + (segLeader ? ' is-leader' : '') + '">' + escapeHtml(r.segment) + '</span>'
+      : '';
+
+    return (
+      '<article class="fg-entry" data-rank="' + escapeHtml(String(r.rank)) + '">' +
+        '<button class="fg-entry__head" aria-expanded="false" type="button">' +
+          '<span class="fg-entry__rank">' + escapeHtml(String(r.rank)) + '</span>' +
+          '<span class="fg-entry__name-block">' +
+            '<span class="fg-entry__name">' + escapeHtml(r.name || '') + '</span>' +
+            (brief ? '<span class="fg-entry__brief">' + brief + '</span>' : '') +
+          '</span>' +
+          segHtml +
+          '<span class="fg-entry__chevron" aria-hidden="true">⌄</span>' +
+        '</button>' +
+        detailHtml +
+      '</article>'
+    );
+  }
+
+  function render() {
+    if (!DATA || !Array.isArray(DATA.restaurants)) {
+      entriesEl.innerHTML = '';
+      return;
+    }
+    const sorted = DATA.restaurants.slice().sort(function (a, b) {
+      return (a.rank || 0) - (b.rank || 0);
+    });
+    entriesEl.innerHTML = sorted.map(buildEntry).join("");
+
+    entriesEl.querySelectorAll(".fg-entry").forEach(function (entry) {
+      const head = entry.querySelector(".fg-entry__head");
+      const detail = entry.querySelector(".fg-entry__detail");
+      head.addEventListener("click", function () {
+        const expanded = head.getAttribute("aria-expanded") === "true";
+        head.setAttribute("aria-expanded", expanded ? "false" : "true");
+        if (expanded) {
+          detail.setAttribute("hidden", "");
+          entry.classList.remove("is-open");
+        } else {
+          detail.removeAttribute("hidden");
+          entry.classList.add("is-open");
+        }
+        sendHeightToParent();
+      });
+    });
+
+    sendHeightToParent();
+  }
+
+  /* ============ iframe-friendly (Tilda T123) ============ */
+  function sendHeightToParent() {
+    if (window.parent === window) return;
+    try {
+      const h = Math.max(
+        document.documentElement.scrollHeight,
+        document.body ? document.body.scrollHeight : 0
+      );
+      window.parent.postMessage({ type: "fg-cards-height", height: h }, "*");
+    } catch (e) {}
+  }
+
+  if (typeof ResizeObserver !== "undefined") {
+    try {
+      const ro = new ResizeObserver(function () { sendHeightToParent(); });
+      ro.observe(root);
+    } catch (e) {}
+  }
+  window.addEventListener("load", sendHeightToParent);
+  window.addEventListener("resize", sendHeightToParent);
+
+  render();
+})();
+</script>
+
+</body>
+</html>
