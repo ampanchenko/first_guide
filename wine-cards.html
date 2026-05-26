@@ -491,16 +491,16 @@
 
     <section class="fg-top10" aria-label="Топ-10 (раздел в разработке)">
       <span class="fg-top10__label">Топ-10</span>
-      <h2 class="fg-top10__title">Подробные карточки лидеров — скоро</h2>
+      <h2 class="fg-top10__title">Развёрнутые портреты лидеров — скоро</h2>
       <p class="fg-top10__hint">
-        Здесь появятся карточки топ-10 ресторанов с раскрытием сильных сторон каждой винной карты: глубина, география, авторские решения, бокальная программа.
+        Здесь появятся карточки топ-10 ресторанов с полным разбором: глубина и характер карты, география виноделен, авторские акценты, бокальная программа.
       </p>
     </section>
 
     <section class="fg-section">
       <div class="fg-section-head">
-        <h2 class="fg-section-head__title">Все рестораны рейтинга</h2>
-        <span class="fg-section-head__count" id="fg-count">50 заведений</span>
+        <h2 class="fg-section-head__title">Все карты рейтинга</h2>
+        <span class="fg-section-head__count" id="fg-count">50 карт</span>
       </div>
       <div class="fg-entries" id="fg-entries"></div>
     </section>
@@ -540,7 +540,7 @@
   if (DATA.rating_title) titleEl.textContent = DATA.rating_title;
   if (DATA.rating_subtitle) subEl.textContent = DATA.rating_subtitle;
   if (Array.isArray(DATA.restaurants)) {
-    countEl.textContent = DATA.restaurants.length + " " + pluralRu(DATA.restaurants.length, "заведение", "заведения", "заведений");
+    countEl.textContent = DATA.restaurants.length + " " + pluralRu(DATA.restaurants.length, "карта", "карты", "карт");
   }
 
   function pluralRu(n, one, few, many) {
@@ -578,12 +578,12 @@
   }
 
   const BTG_COLORS = [
-    { key: "red",       label: "Красные"   },
-    { key: "white",     label: "Белые"     },
-    { key: "rose",      label: "Розовые"   },
-    { key: "sparkling", label: "Игристые"  },
-    { key: "orange",    label: "Оранжевые" },
-    { key: "sweet",     label: "Сладкие"   },
+    { key: "red",       label: "Красное"   },
+    { key: "white",     label: "Белое"     },
+    { key: "rose",      label: "Розе"      },
+    { key: "sparkling", label: "Игристое"  },
+    { key: "orange",    label: "Оранж"     },
+    { key: "sweet",     label: "Десертное" },
   ];
 
   function btgTotal(btg) {
@@ -596,10 +596,16 @@
 
   function buildBriefLine(r) {
     const parts = [];
-    if (r.depth) parts.push("<b>" + escapeHtml(fmtNum(r.depth)) + "</b> " + pluralRu(r.depth, "бутылка", "бутылки", "бутылок"));
+    if (r.depth) parts.push("<b>" + escapeHtml(fmtNum(r.depth)) + "</b> " + pluralRu(r.depth, "вино", "вина", "вин"));
     const total = btgTotal(r.btg);
     if (total > 0) parts.push("<b>" + total + "</b> по бокалам");
-    if (r.types_in_card) parts.push("<b>" + escapeHtml(r.types_in_card) + "</b> типов вин");
+    if (r.types_in_card) {
+      const m = String(r.types_in_card).match(/^(\d+)/);
+      if (m) {
+        const n = Number(m[1]);
+        parts.push("<b>" + n + "</b> " + pluralRu(n, "стиль", "стиля", "стилей"));
+      }
+    }
     return parts.join(" · ");
   }
 
@@ -609,21 +615,25 @@
     const btgTotalN = btgTotal(r.btg);
 
     const sommelierRow = r.sommelier && String(r.sommelier).trim()
-      ? '<div class="fg-prop"><dt class="fg-prop__key">Шеф-сомелье</dt><dd class="fg-prop__val">' + escapeHtml(r.sommelier) + '</dd></div>'
+      ? '<div class="fg-prop"><dt class="fg-prop__key">Карту ведёт</dt><dd class="fg-prop__val">' + escapeHtml(r.sommelier) + '</dd></div>'
       : '';
 
     const autochVal = (function () {
       if (!r.autochthons) return '<dd class="fg-prop__val">—</dd>';
       const parts = String(r.autochthons).split(":").map(function (s) { return s.trim(); });
       if (parts.length === 2) {
-        return '<dd class="fg-prop__val">' + escapeHtml(parts[0]) + ' <small>сорта</small> · ' + escapeHtml(parts[1]) + ' <small>бутылки</small></dd>';
+        const sortN = Number(parts[0]);
+        const bottN = Number(parts[1]);
+        const sortWord = !isNaN(sortN) ? pluralRu(sortN, "сорт", "сорта", "сортов") : "сорта";
+        const bottWord = !isNaN(bottN) ? pluralRu(bottN, "вино", "вина", "вин") : "вина";
+        return '<dd class="fg-prop__val">' + escapeHtml(parts[0]) + ' <small>' + sortWord + '</small> · ' + escapeHtml(parts[1]) + ' <small>' + bottWord + '</small></dd>';
       }
       return '<dd class="fg-prop__val">' + escapeHtml(r.autochthons) + '</dd>';
     })();
 
     let btgHtml = '';
     if (btgTotalN === 0) {
-      btgHtml = '<p class="fg-btg-empty">Бокальной программы нет</p>';
+      btgHtml = '<p class="fg-btg-empty">Карта рассчитана на бутылочный заказ</p>';
     } else {
       btgHtml = '<ul class="fg-btg">' + BTG_COLORS.map(function (c) {
         const n = (r.btg && typeof r.btg[c.key] === "number") ? r.btg[c.key] : 0;
@@ -645,25 +655,25 @@
       '<div class="fg-entry__detail" hidden>' +
         descHtml +
         '<div class="fg-detail-block">' +
-          '<h4 class="fg-detail-block__title">Винная карта</h4>' +
+          '<h4 class="fg-detail-block__title">О карте</h4>' +
           '<dl class="fg-props">' +
             sommelierRow +
-            '<div class="fg-prop"><dt class="fg-prop__key">Бутылок в карте</dt><dd class="fg-prop__val">' + escapeHtml(fmtNum(r.depth)) + '</dd></div>' +
-            '<div class="fg-prop"><dt class="fg-prop__key">Моно-сортовых вин</dt><dd class="fg-prop__val">' + escapeHtml(fmtNum(r.mono_grapes)) + '</dd></div>' +
-            '<div class="fg-prop"><dt class="fg-prop__key">Бленды</dt><dd class="fg-prop__val">' + escapeHtml(fmtNum(r.blends)) + '</dd></div>' +
-            '<div class="fg-prop"><dt class="fg-prop__key">Хозяйств-производителей</dt><dd class="fg-prop__val">' + escapeHtml(fmtNum(r.producers)) + '</dd></div>' +
-            '<div class="fg-prop"><dt class="fg-prop__key">Регионов</dt><dd class="fg-prop__val">' + escapeHtml(fmtNum(r.regions)) + '</dd></div>' +
-            '<div class="fg-prop"><dt class="fg-prop__key">Типы вин в карте</dt><dd class="fg-prop__val">' + escapeHtml(r.types_in_card || '—') + '</dd></div>' +
-            '<div class="fg-prop"><dt class="fg-prop__key">Автохтоны</dt>' + autochVal + '</div>' +
-            '<div class="fg-prop"><dt class="fg-prop__key">Медиана бутылки</dt><dd class="fg-prop__val">' + escapeHtml(fmtRub(r.median_bottle_rub)) + '</dd></div>' +
+            '<div class="fg-prop"><dt class="fg-prop__key">Всего вин</dt><dd class="fg-prop__val">' + escapeHtml(fmtNum(r.depth)) + '</dd></div>' +
+            '<div class="fg-prop"><dt class="fg-prop__key">Сортовые вина</dt><dd class="fg-prop__val">' + escapeHtml(fmtNum(r.mono_grapes)) + '</dd></div>' +
+            '<div class="fg-prop"><dt class="fg-prop__key">Купажи</dt><dd class="fg-prop__val">' + escapeHtml(fmtNum(r.blends)) + '</dd></div>' +
+            '<div class="fg-prop"><dt class="fg-prop__key">Виноделен</dt><dd class="fg-prop__val">' + escapeHtml(fmtNum(r.producers)) + '</dd></div>' +
+            '<div class="fg-prop"><dt class="fg-prop__key">Винодельческих регионов</dt><dd class="fg-prop__val">' + escapeHtml(fmtNum(r.regions)) + '</dd></div>' +
+            '<div class="fg-prop"><dt class="fg-prop__key">Стили вина</dt><dd class="fg-prop__val">' + escapeHtml(r.types_in_card || '—') + '</dd></div>' +
+            '<div class="fg-prop"><dt class="fg-prop__key">Российские автохтоны</dt>' + autochVal + '</div>' +
+            '<div class="fg-prop"><dt class="fg-prop__key">Средняя цена бутылки</dt><dd class="fg-prop__val">' + escapeHtml(fmtRub(r.median_bottle_rub)) + '</dd></div>' +
           '</dl>' +
         '</div>' +
         '<div class="fg-detail-block">' +
-          '<h4 class="fg-detail-block__title">По бокалам' + (btgTotalN > 0 ? ' · ' + btgTotalN + ' ' + pluralRu(btgTotalN, "позиция", "позиции", "позиций") : '') + '</h4>' +
+          '<h4 class="fg-detail-block__title">Бокальная программа' + (btgTotalN > 0 ? ' · ' + btgTotalN + ' ' + pluralRu(btgTotalN, "позиция", "позиции", "позиций") : '') + '</h4>' +
           btgHtml +
           (btgTotalN > 0 ? '<dl class="fg-props" style="margin-top: 18px;">' +
-            '<div class="fg-prop"><dt class="fg-prop__key">Типы в БТГ</dt><dd class="fg-prop__val">' + escapeHtml(r.btg_types_count || '—') + '</dd></div>' +
-            '<div class="fg-prop"><dt class="fg-prop__key">Медиана бокала</dt><dd class="fg-prop__val">' + escapeHtml(fmtRub(r.median_glass_rub)) + '</dd></div>' +
+            '<div class="fg-prop"><dt class="fg-prop__key">Стилей в программе</dt><dd class="fg-prop__val">' + escapeHtml(r.btg_types_count || '—') + '</dd></div>' +
+            '<div class="fg-prop"><dt class="fg-prop__key">Средняя цена бокала</dt><dd class="fg-prop__val">' + escapeHtml(fmtRub(r.median_glass_rub)) + '</dd></div>' +
           '</dl>' : '') +
         '</div>' +
       '</div>';
