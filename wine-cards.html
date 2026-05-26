@@ -320,6 +320,53 @@
   }
   .fg-cards .fg-detail-desc p { margin: 0; }
 
+  /* Prices block (full width, accented) */
+  .fg-cards .fg-detail-prices {
+    grid-column: 1 / -1;
+    background: var(--paper-warm);
+    border: 1px solid var(--rule-soft);
+    border-radius: 6px;
+    padding: 16px 22px 18px;
+    margin: 4px 0 6px;
+  }
+  .fg-cards .fg-detail-prices__label {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+  .fg-cards .fg-detail-prices__row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px 56px;
+    align-items: baseline;
+  }
+  .fg-cards .fg-price {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    min-width: 0;
+  }
+  .fg-cards .fg-price__key {
+    font-size: 14px;
+    color: var(--ink-soft);
+    font-weight: 500;
+  }
+  .fg-cards .fg-price__val {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  @media (max-width: 480px) {
+    .fg-cards .fg-detail-prices { padding: 14px 16px 16px; }
+    .fg-cards .fg-detail-prices__row { gap: 14px 32px; }
+    .fg-cards .fg-price__val { font-size: 20px; }
+  }
+
   .fg-cards .fg-detail-block__title {
     font-size: 11px;
     letter-spacing: 0.14em;
@@ -652,9 +699,26 @@
       ? '<div class="fg-detail-desc"><p>' + escapeHtml(r.description) + '</p></div>'
       : '';
 
+    const hasGlass = r.median_glass_rub !== null && r.median_glass_rub !== undefined && r.median_glass_rub !== '';
+    const hasBottle = r.median_bottle_rub !== null && r.median_bottle_rub !== undefined && r.median_bottle_rub !== '';
+    const priceHtml = (hasGlass || hasBottle)
+      ? '<div class="fg-detail-prices">' +
+          '<div class="fg-detail-prices__label">Ориентировочные цены</div>' +
+          '<div class="fg-detail-prices__row">' +
+            (hasGlass
+              ? '<div class="fg-price"><span class="fg-price__key">Бокал</span><span class="fg-price__val">' + escapeHtml(fmtRub(r.median_glass_rub)) + '</span></div>'
+              : '') +
+            (hasBottle
+              ? '<div class="fg-price"><span class="fg-price__key">Бутылка</span><span class="fg-price__val">' + escapeHtml(fmtRub(r.median_bottle_rub)) + '</span></div>'
+              : '') +
+          '</div>' +
+        '</div>'
+      : '';
+
     const detailHtml =
       '<div class="fg-entry__detail" hidden>' +
         descHtml +
+        priceHtml +
         '<div class="fg-detail-block">' +
           '<h4 class="fg-detail-block__title">О карте</h4>' +
           '<dl class="fg-props">' +
@@ -666,7 +730,6 @@
             '<div class="fg-prop"><dt class="fg-prop__key">ЗГУ</dt><dd class="fg-prop__val">' + escapeHtml(fmtNum(r.regions)) + '</dd></div>' +
             '<div class="fg-prop"><dt class="fg-prop__key">Полнота карты</dt><dd class="fg-prop__val">' + escapeHtml(r.types_in_card || '—') + '</dd></div>' +
             '<div class="fg-prop"><dt class="fg-prop__key">Российские автохтоны</dt>' + autochVal + '</div>' +
-            '<div class="fg-prop"><dt class="fg-prop__key">Ориентировочная цена бутылки</dt><dd class="fg-prop__val">' + escapeHtml(fmtRub(r.median_bottle_rub)) + '</dd></div>' +
           '</dl>' +
         '</div>' +
         '<div class="fg-detail-block">' +
@@ -674,7 +737,6 @@
           btgHtml +
           (btgTotalN > 0 ? '<dl class="fg-props" style="margin-top: 18px;">' +
             '<div class="fg-prop"><dt class="fg-prop__key">Полнота бокальной</dt><dd class="fg-prop__val">' + escapeHtml(r.btg_types_count || '—') + '</dd></div>' +
-            '<div class="fg-prop"><dt class="fg-prop__key">Ориентировочная цена бокала</dt><dd class="fg-prop__val">' + escapeHtml(fmtRub(r.median_glass_rub)) + '</dd></div>' +
           '</dl>' : '') +
         '</div>' +
       '</div>';
