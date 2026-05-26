@@ -320,14 +320,14 @@
   }
   .fg-cards .fg-detail-desc p { margin: 0; }
 
-  /* Prices block (full width, accented) */
+  /* Prices block (full width, accented) — sits at the bottom of the expand */
   .fg-cards .fg-detail-prices {
     grid-column: 1 / -1;
     background: var(--paper-warm);
     border: 1px solid var(--rule-soft);
     border-radius: 6px;
     padding: 16px 22px 18px;
-    margin: 4px 0 6px;
+    margin: 6px 0 0;
   }
   .fg-cards .fg-detail-prices__label {
     font-size: 11px;
@@ -718,7 +718,6 @@
     const detailHtml =
       '<div class="fg-entry__detail" hidden>' +
         descHtml +
-        priceHtml +
         '<div class="fg-detail-block">' +
           '<h4 class="fg-detail-block__title">О карте</h4>' +
           '<dl class="fg-props">' +
@@ -739,6 +738,7 @@
             '<div class="fg-prop"><dt class="fg-prop__key">Полнота бокальной</dt><dd class="fg-prop__val">' + escapeHtml(r.btg_types_count || '—') + '</dd></div>' +
           '</dl>' : '') +
         '</div>' +
+        priceHtml +
       '</div>';
 
     const nomHtml = r.nomination && String(r.nomination).trim()
