@@ -440,27 +440,29 @@
   }
   .fg-cards .fg-bar.is-zero .fg-bar__label { color: var(--ink-faint); }
   .fg-cards .fg-bar__track {
-    height: 12px;
-    background: var(--paper);
-    border-radius: 2px;
+    height: 14px;
+    background: #f1ece0;
+    border: 1px solid rgba(0,0,0,0.05);
+    border-radius: 3px;
     overflow: hidden;
   }
   .fg-cards .fg-bar__fill {
     height: 100%;
     border-radius: 2px;
     transition: width 0.25s ease;
-    min-width: 2px;
+    min-width: 3px;
   }
   .fg-cards .fg-bar.is-zero .fg-bar__fill { min-width: 0; background: transparent !important; }
-  .fg-cards .fg-bar__fill--red       { background: #722f37; }
-  .fg-cards .fg-bar__fill--white     { background: #d4b96b; }
-  .fg-cards .fg-bar__fill--rose      { background: #d97a8f; }
-  .fg-cards .fg-bar__fill--sparkling { background: #e3c97a; }
-  .fg-cards .fg-bar__fill--orange    { background: #d68a3a; }
-  .fg-cards .fg-bar__fill--sweet     { background: #6a3a3a; }
+  /* Bright, distinguishable palette per colour */
+  .fg-cards .fg-bar__fill--red       { background: #8a2a2a; }
+  .fg-cards .fg-bar__fill--white     { background: #f0d65a; }
+  .fg-cards .fg-bar__fill--rose      { background: #e07090; }
+  .fg-cards .fg-bar__fill--sparkling { background: #f6e88e; border: 1px solid #c9a630; box-sizing: border-box; }
+  .fg-cards .fg-bar__fill--orange    { background: #e08a2e; }
+  .fg-cards .fg-bar__fill--sweet     { background: #4a1f24; }
   .fg-cards .fg-bar__count {
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 15px;
+    font-weight: 700;
     color: var(--ink);
     font-variant-numeric: tabular-nums;
     text-align: right;
