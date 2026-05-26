@@ -438,7 +438,7 @@
     color: var(--ink-soft);
     line-height: 1.2;
   }
-  .fg-cards .fg-bar.is-zero .fg-bar__label { color: var(--ink-faint); }
+  .fg-cards .fg-bar.is-zero .fg-bar__label { color: #b85050; font-style: italic; }
   .fg-cards .fg-bar__track {
     display: block;
     height: 14px;
@@ -446,6 +446,10 @@
     border: 1px solid rgba(0,0,0,0.05);
     border-radius: 3px;
     overflow: hidden;
+  }
+  .fg-cards .fg-bar.is-zero .fg-bar__track {
+    background: #fce8e8;
+    border-color: rgba(183, 36, 36, 0.20);
   }
   .fg-cards .fg-bar__fill {
     display: block;
@@ -469,7 +473,7 @@
     font-variant-numeric: tabular-nums;
     text-align: right;
   }
-  .fg-cards .fg-bar.is-zero .fg-bar__count { color: var(--ink-faint); font-weight: 400; }
+  .fg-cards .fg-bar.is-zero .fg-bar__count { color: #b85050; font-weight: 500; }
 
   .fg-cards .fg-btg-empty {
     font-size: 14px;
