@@ -458,7 +458,7 @@
     transition: width 0.25s ease;
     min-width: 3px;
   }
-  .fg-cards .fg-bar.is-zero .fg-bar__fill { min-width: 0; background: transparent !important; }
+  .fg-cards .fg-bar.is-zero .fg-bar__fill { min-width: 0; background: transparent !important; border: none !important; }
   /* Bright, distinguishable palette per colour */
   .fg-cards .fg-bar__fill--red       { background: #8a2a2a; }
   .fg-cards .fg-bar__fill--white     { background: #f0d65a; }
@@ -782,7 +782,7 @@
             '<div class="fg-prop"><dt class="fg-prop__key">Винодельни</dt><dd class="fg-prop__val">' + escapeHtml(fmtNum(r.producers)) + '</dd></div>' +
             '<div class="fg-prop"><dt class="fg-prop__key">ЗГУ</dt><dd class="fg-prop__val">' + escapeHtml(fmtNum(r.regions)) + '</dd></div>' +
             '<div class="fg-prop"><dt class="fg-prop__key">Российские автохтоны</dt>' + autochVal + '</div>' +
-            (r.sparkling_subtypes ? '<div class="fg-prop"><dt class="fg-prop__key">Подтипы игристых</dt><dd class="fg-prop__val">' + escapeHtml(r.sparkling_subtypes) + '</dd></div>' : '') +
+            (r.sparkling_subtypes ? '<div class="fg-prop"><dt class="fg-prop__key">Стили игристых</dt><dd class="fg-prop__val">' + escapeHtml(r.sparkling_subtypes) + '</dd></div>' : '') +
           '</dl>' +
         '</div>' +
         priceHtml +
