@@ -378,24 +378,11 @@
     border-top: 1px solid var(--rule-soft);
     display: flex;
     flex-wrap: wrap;
-    gap: 4px 24px;
+    align-items: baseline;
+    gap: 6px 12px;
     font-size: 14px;
     color: var(--ink-soft);
     line-height: 1.45;
-  }
-  .fg-cards .fg-contact {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 6px;
-    min-width: 0;
-  }
-  .fg-cards .fg-contact__key {
-    color: var(--ink-faint);
-    font-size: 12px;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    font-weight: 600;
-    flex: 0 0 auto;
   }
   .fg-cards .fg-contact__val {
     color: var(--ink-soft);
@@ -412,8 +399,13 @@
   .fg-cards a.fg-contact__val:hover {
     text-decoration-color: var(--wine);
   }
+  .fg-cards .fg-contact__sep {
+    color: var(--ink-faint);
+    user-select: none;
+  }
   @media (max-width: 480px) {
-    .fg-cards .fg-detail-contacts { flex-direction: column; gap: 8px; font-size: 13px; }
+    .fg-cards .fg-detail-contacts { flex-direction: column; gap: 6px; font-size: 13px; }
+    .fg-cards .fg-contact__sep { display: none; }
   }
 
   .fg-cards .fg-detail-block__title {
@@ -814,14 +806,17 @@
     let contactsHtml = '';
     if (addr || web) {
       const parts = [];
-      if (addr) parts.push('<span class="fg-contact"><span class="fg-contact__key">Адрес</span><span class="fg-contact__val">' + escapeHtml(addr) + '</span></span>');
+      if (addr) {
+        const fullAddr = /москв/i.test(addr) ? addr : 'Москва, ' + addr;
+        parts.push('<span class="fg-contact__val">' + escapeHtml(fullAddr) + '</span>');
+      }
       if (web) {
         const url = String(web);
         const safeUrl = /^https?:\/\//i.test(url) ? url : 'https://' + url;
         const display = url.replace(/^https?:\/\//i, '').replace(/\/$/, '');
-        parts.push('<span class="fg-contact"><span class="fg-contact__key">Сайт</span><a class="fg-contact__val" href="' + escapeHtml(safeUrl) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(display) + '</a></span>');
+        parts.push('<a class="fg-contact__val" href="' + escapeHtml(safeUrl) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(display) + '</a>');
       }
-      contactsHtml = '<div class="fg-detail-contacts">' + parts.join('') + '</div>';
+      contactsHtml = '<div class="fg-detail-contacts">' + parts.join('<span class="fg-contact__sep" aria-hidden="true">·</span>') + '</div>';
     }
 
     const detailHtml =
