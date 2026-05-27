@@ -856,7 +856,7 @@
             '<div class="fg-prop"><dt class="fg-prop__key">Винодельни</dt><dd class="fg-prop__val">' + escapeHtml(fmtNum(r.producers)) + '</dd></div>' +
             '<div class="fg-prop"><dt class="fg-prop__key">ЗГУ</dt><dd class="fg-prop__val">' + escapeHtml(fmtNum(r.regions)) + '</dd></div>' +
             '<div class="fg-prop"><dt class="fg-prop__key">Российские автохтоны</dt>' + autochVal + '</div>' +
-            (r.sparkling_subtypes ? '<div class="fg-prop"><dt class="fg-prop__key">Стили игристых</dt><dd class="fg-prop__val">' + escapeHtml(r.sparkling_subtypes) + '</dd></div>' : '') +
+            (r.sparkling_subtypes ? '<div class="fg-prop"><dt class="fg-prop__key">Стили игристых</dt><dd class="fg-prop__val">' + escapeHtml(String(r.sparkling_subtypes).split('/')[0].trim()) + '</dd></div>' : '') +
           '</dl>' +
         '</div>' +
         priceHtml +
