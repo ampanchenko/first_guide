@@ -730,13 +730,6 @@
     if (r.depth) parts.push("<b>" + escapeHtml(fmtNum(r.depth)) + "</b> " + pluralRu(r.depth, "вино", "вина", "вин"));
     const total = btgTotal(r.btg);
     if (total > 0) parts.push("<b>" + total + "</b> по бокалам");
-    if (r.types_in_card) {
-      const m = String(r.types_in_card).match(/^(\d+)/);
-      if (m) {
-        const n = Number(m[1]);
-        parts.push("<b>" + n + "</b> " + pluralRu(n, "раздел", "раздела", "разделов"));
-      }
-    }
     return parts.join(" · ");
   }
 
@@ -830,7 +823,7 @@
       '<div class="fg-entry__detail" hidden>' +
         descHtml +
         '<div class="fg-detail-block">' +
-          '<h4 class="fg-detail-block__title">Разделы карты</h4>' +
+          '<h4 class="fg-detail-block__title">Разделы карты' + (r.depth ? ' · ' + escapeHtml(fmtNum(r.depth)) + ' ' + pluralRu(r.depth, "вино", "вина", "вин") : '') + '</h4>' +
           cardBarsHtml +
         '</div>' +
         '<div class="fg-detail-block">' +
