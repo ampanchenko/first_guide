@@ -594,19 +594,18 @@
     }
   }
   @media (max-width: 600px) {
-    /* Nomination is too wide here — break it onto its own row below the name */
+    /* Nomination, when present, drops onto its own implicit row below */
     .fg-cards .fg-entry__head {
       grid-template-columns: 48px minmax(0, 1fr) 24px;
-      grid-template-areas:
-        "rank name chev"
-        ".    badge badge";
       row-gap: 10px;
     }
-    .fg-cards .fg-entry__rank        { grid-area: rank; }
-    .fg-cards .fg-entry__name-block  { grid-area: name; }
-    .fg-cards .fg-entry__right       { display: contents; }
-    .fg-cards .fg-entry__chevron     { grid-area: chev; justify-self: end; }
-    .fg-cards .fg-entry__segment     { grid-area: badge; justify-self: start; }
+    .fg-cards .fg-entry__right    { display: contents; }
+    .fg-cards .fg-entry__chevron  { grid-column: 3; grid-row: 1; justify-self: end; align-self: center; }
+    .fg-cards .fg-entry__segment  { grid-column: 2 / span 2; justify-self: start; }
+    /* Bump up the restaurant name so it's the loudest line on the card */
+    .fg-cards .fg-entry__name     { font-size: 21px; line-height: 1.2; }
+    .fg-cards .fg-entry__brief    { font-size: 13px; }
+    .fg-cards .fg-entry__cuisine  { font-size: 10px; }
   }
 
   /* Responsive: mobile */
