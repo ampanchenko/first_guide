@@ -1026,13 +1026,21 @@
   });
 
   /* ============ iframe-friendly (Tilda T123) ============ */
+  // Use .fg-cards' OWN content height — never documentElement.scrollHeight,
+  // which grows to match the viewport (the iframe) and causes a runaway loop:
+  //   parent sets iframe.height = h+8 → documentElement.scrollHeight = h+8 →
+  //   next message also h+8 (then +16, +24…). With root.scrollHeight, the
+  //   reported height is the layout size of the content, independent of the
+  //   iframe viewport.
+  let lastSentHeight = 0;
   function sendHeightToParent() {
     if (window.parent === window) return;
+    const node = root || document.querySelector(".fg-cards") || document.body;
+    if (!node) return;
+    const h = node.scrollHeight || node.offsetHeight || 0;
+    if (!h || Math.abs(h - lastSentHeight) < 4) return;
+    lastSentHeight = h;
     try {
-      const h = Math.max(
-        document.documentElement.scrollHeight,
-        document.body ? document.body.scrollHeight : 0
-      );
       window.parent.postMessage({ type: "fg-cards-height", height: h }, "*");
     } catch (e) {}
   }
@@ -1045,6 +1053,12 @@
   }
   window.addEventListener("load", sendHeightToParent);
   window.addEventListener("resize", sendHeightToParent);
+  window.addEventListener("message", function (e) {
+    if (e && e.data && e.data.type === "fg-cards-request-height") {
+      lastSentHeight = 0; // force re-send
+      sendHeightToParent();
+    }
+  });
 
   render();
 })();
