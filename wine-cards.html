@@ -709,10 +709,6 @@
     </header>
 
     <section class="fg-section">
-      <div class="fg-section-head">
-        <h2 class="fg-section-head__title">Все карты рейтинга</h2>
-        <span class="fg-section-head__count" id="fg-count">50 карт</span>
-      </div>
       <div class="fg-sort" role="tablist" aria-label="Сортировка">
         <span class="fg-sort__label">Сортировка</span>
         <button class="fg-sort__btn is-active" data-sort="rank"   type="button"><span class="fg-sort__txt">по рейтингу</span><span class="fg-sort__arrow" aria-hidden="true">↑</span></button>
@@ -753,7 +749,7 @@
 
   if (DATA.rating_title) titleEl.textContent = DATA.rating_title;
   if (DATA.rating_subtitle) subEl.textContent = DATA.rating_subtitle;
-  if (Array.isArray(DATA.restaurants)) {
+  if (countEl && Array.isArray(DATA.restaurants)) {
     countEl.textContent = DATA.restaurants.length + " " + pluralRu(DATA.restaurants.length, "карта", "карты", "карт");
   }
 
