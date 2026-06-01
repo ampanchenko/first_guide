@@ -200,6 +200,49 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Sort chips */
+  .fg-cards .fg-sort {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+    margin: 0 0 18px 0;
+  }
+  .fg-cards .fg-sort__label {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 600;
+    margin-right: 4px;
+  }
+  .fg-cards .fg-sort__btn {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+    white-space: nowrap;
+  }
+  .fg-cards .fg-sort__btn:hover {
+    border-color: var(--ink-faint);
+    color: var(--ink);
+  }
+  .fg-cards .fg-sort__btn.is-active {
+    background: var(--ink);
+    color: var(--paper-warm);
+    border-color: var(--ink);
+  }
+  @media (max-width: 600px) {
+    .fg-cards .fg-sort { gap: 6px 8px; margin-bottom: 14px; }
+    .fg-cards .fg-sort__label { display: block; width: 100%; margin-bottom: 2px; }
+    .fg-cards .fg-sort__btn { font-size: 12px; padding: 5px 10px; }
+  }
+
   /* ============ ENTRIES LIST ============ */
   .fg-cards .fg-entries {
     display: flex;
@@ -660,6 +703,13 @@
         <h2 class="fg-section-head__title">Все карты рейтинга</h2>
         <span class="fg-section-head__count" id="fg-count">50 карт</span>
       </div>
+      <div class="fg-sort" role="tablist" aria-label="Сортировка">
+        <span class="fg-sort__label">Сортировка</span>
+        <button class="fg-sort__btn is-active" data-sort="rank"   type="button">по рейтингу</button>
+        <button class="fg-sort__btn"           data-sort="glass"  type="button">по цене бокала</button>
+        <button class="fg-sort__btn"           data-sort="bottle" type="button">по цене бутылки</button>
+        <button class="fg-sort__btn"           data-sort="depth"  type="button">по количеству вин</button>
+      </div>
       <div class="fg-entries" id="fg-entries"></div>
     </section>
 
@@ -897,14 +947,21 @@
     );
   }
 
+  const SORT_FNS = {
+    rank:   function (a, b) { return (a.rank || 0) - (b.rank || 0); },
+    glass:  function (a, b) { return (a.median_glass_rub  || Infinity) - (b.median_glass_rub  || Infinity); },
+    bottle: function (a, b) { return (a.median_bottle_rub || Infinity) - (b.median_bottle_rub || Infinity); },
+    depth:  function (a, b) { return (b.depth || 0) - (a.depth || 0); },
+  };
+  let currentSort = "rank";
+
   function render() {
     if (!DATA || !Array.isArray(DATA.restaurants)) {
       entriesEl.innerHTML = '';
       return;
     }
-    const sorted = DATA.restaurants.slice().sort(function (a, b) {
-      return (a.rank || 0) - (b.rank || 0);
-    });
+    const sortFn = SORT_FNS[currentSort] || SORT_FNS.rank;
+    const sorted = DATA.restaurants.slice().sort(sortFn);
     entriesEl.innerHTML = sorted.map(buildEntry).join("");
 
     entriesEl.querySelectorAll(".fg-entry").forEach(function (entry) {
@@ -926,6 +983,20 @@
 
     sendHeightToParent();
   }
+
+  /* ============ Sort controls ============ */
+  const sortButtons = root.querySelectorAll(".fg-sort__btn");
+  sortButtons.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      const key = btn.getAttribute("data-sort");
+      if (!key || !(key in SORT_FNS) || key === currentSort) return;
+      currentSort = key;
+      sortButtons.forEach(function (b) {
+        b.classList.toggle("is-active", b.getAttribute("data-sort") === key);
+      });
+      render();
+    });
+  });
 
   /* ============ iframe-friendly (Tilda T123) ============ */
   function sendHeightToParent() {
