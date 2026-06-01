@@ -594,17 +594,19 @@
     }
   }
   @media (max-width: 600px) {
-    /* Nomination is too wide here — stack it under name; chevron stays right */
+    /* Nomination is too wide here — break it onto its own row below the name */
     .fg-cards .fg-entry__head {
-      grid-template-columns: 48px minmax(0, 1fr) auto;
+      grid-template-columns: 48px minmax(0, 1fr) 24px;
+      grid-template-areas:
+        "rank name chev"
+        ".    badge badge";
+      row-gap: 10px;
     }
-    .fg-cards .fg-entry__right {
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 8px;
-    }
-    .fg-cards .fg-entry__segment { order: 2; }
-    .fg-cards .fg-entry__chevron { order: 1; }
+    .fg-cards .fg-entry__rank        { grid-area: rank; }
+    .fg-cards .fg-entry__name-block  { grid-area: name; }
+    .fg-cards .fg-entry__right       { display: contents; }
+    .fg-cards .fg-entry__chevron     { grid-area: chev; justify-self: end; }
+    .fg-cards .fg-entry__segment     { grid-area: badge; justify-self: start; }
   }
 
   /* Responsive: mobile */
