@@ -43,12 +43,16 @@
 
 <style>
   /* ============ NAMESPACED RESET ============ */
+  /* Match the host page background to .fg-cards so the iframe/Tilda wrapper
+     doesn't show its default white frame around or below the block. */
+  html:has(.fg-cards), body:has(.fg-cards) { margin: 0; background: #cac4b0; }
   .fg-cards *,
   .fg-cards *::before,
   .fg-cards *::after {
     box-sizing: border-box;
   }
   .fg-cards {
+    min-height: 100vh;
     --ink: #1a1614;
     --ink-soft: #4a4035;
     --ink-faint: #7a6f60;
