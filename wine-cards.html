@@ -227,7 +227,17 @@
     cursor: pointer;
     transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
     white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
   }
+  .fg-cards .fg-sort__arrow {
+    font-size: 12px;
+    line-height: 1;
+    opacity: 0.55;
+    font-variant-numeric: tabular-nums;
+  }
+  .fg-cards .fg-sort__btn.is-active .fg-sort__arrow { opacity: 1; }
   .fg-cards .fg-sort__btn:hover {
     border-color: var(--ink-faint);
     color: var(--ink);
@@ -705,10 +715,10 @@
       </div>
       <div class="fg-sort" role="tablist" aria-label="Сортировка">
         <span class="fg-sort__label">Сортировка</span>
-        <button class="fg-sort__btn is-active" data-sort="rank"   type="button">по рейтингу</button>
-        <button class="fg-sort__btn"           data-sort="glass"  type="button">по цене бокала</button>
-        <button class="fg-sort__btn"           data-sort="bottle" type="button">по цене бутылки</button>
-        <button class="fg-sort__btn"           data-sort="depth"  type="button">по количеству вин</button>
+        <button class="fg-sort__btn is-active" data-sort="rank"   type="button"><span class="fg-sort__txt">по рейтингу</span><span class="fg-sort__arrow" aria-hidden="true">↑</span></button>
+        <button class="fg-sort__btn"           data-sort="glass"  type="button"><span class="fg-sort__txt">по цене бокала</span><span class="fg-sort__arrow" aria-hidden="true">↑</span></button>
+        <button class="fg-sort__btn"           data-sort="bottle" type="button"><span class="fg-sort__txt">по цене бутылки</span><span class="fg-sort__arrow" aria-hidden="true">↑</span></button>
+        <button class="fg-sort__btn"           data-sort="depth"  type="button"><span class="fg-sort__txt">по количеству вин</span><span class="fg-sort__arrow" aria-hidden="true">↓</span></button>
       </div>
       <div class="fg-entries" id="fg-entries"></div>
     </section>
@@ -947,12 +957,16 @@
     );
   }
 
-  const SORT_FNS = {
-    rank:   function (a, b) { return (a.rank || 0) - (b.rank || 0); },
-    glass:  function (a, b) { return (a.median_glass_rub  || Infinity) - (b.median_glass_rub  || Infinity); },
-    bottle: function (a, b) { return (a.median_bottle_rub || Infinity) - (b.median_bottle_rub || Infinity); },
-    depth:  function (a, b) { return (b.depth || 0) - (a.depth || 0); },
+  // Each sort has an extractor; direction is applied per-key in render()
+  const SORT_KEYS = {
+    rank:   function (r) { return r.rank || Infinity; },
+    glass:  function (r) { return (r.median_glass_rub  != null && r.median_glass_rub  !== "") ? Number(r.median_glass_rub)  : Infinity; },
+    bottle: function (r) { return (r.median_bottle_rub != null && r.median_bottle_rub !== "") ? Number(r.median_bottle_rub) : Infinity; },
+    depth:  function (r) { return r.depth || 0; },
   };
+  // Default direction for each key (used on first activation)
+  // depth is naturally desc (more wine first); the rest asc.
+  const sortDir = { rank: "asc", glass: "asc", bottle: "asc", depth: "desc" };
   let currentSort = "rank";
 
   function render() {
@@ -960,8 +974,11 @@
       entriesEl.innerHTML = '';
       return;
     }
-    const sortFn = SORT_FNS[currentSort] || SORT_FNS.rank;
-    const sorted = DATA.restaurants.slice().sort(sortFn);
+    const extract = SORT_KEYS[currentSort] || SORT_KEYS.rank;
+    const dirMul = (sortDir[currentSort] === "desc") ? -1 : 1;
+    const sorted = DATA.restaurants.slice().sort(function (a, b) {
+      return (extract(a) - extract(b)) * dirMul;
+    });
     entriesEl.innerHTML = sorted.map(buildEntry).join("");
 
     entriesEl.querySelectorAll(".fg-entry").forEach(function (entry) {
@@ -986,14 +1003,25 @@
 
   /* ============ Sort controls ============ */
   const sortButtons = root.querySelectorAll(".fg-sort__btn");
+  function updateSortUI() {
+    sortButtons.forEach(function (b) {
+      const k = b.getAttribute("data-sort");
+      b.classList.toggle("is-active", k === currentSort);
+      const arrow = b.querySelector(".fg-sort__arrow");
+      if (arrow) arrow.textContent = (sortDir[k] === "desc") ? "↓" : "↑";
+    });
+  }
   sortButtons.forEach(function (btn) {
     btn.addEventListener("click", function () {
       const key = btn.getAttribute("data-sort");
-      if (!key || !(key in SORT_FNS) || key === currentSort) return;
-      currentSort = key;
-      sortButtons.forEach(function (b) {
-        b.classList.toggle("is-active", b.getAttribute("data-sort") === key);
-      });
+      if (!key || !(key in SORT_KEYS)) return;
+      if (key === currentSort) {
+        // Same sort clicked → flip direction
+        sortDir[key] = (sortDir[key] === "desc") ? "asc" : "desc";
+      } else {
+        currentSort = key;
+      }
+      updateSortUI();
       render();
     });
   });
