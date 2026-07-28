@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Винодел: Поймай игристое!</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    background: #1a0f1e;
+    font-family: Georgia, 'Times New Roman', serif;
+    overflow: hidden;
+    touch-action: none;
+  }
+  #wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+  }
+  canvas {
+    display: block;
+    border-radius: 12px;
+    box-shadow: 0 10px 60px rgba(0,0,0,.6);
+    max-width: 100vw;
+    max-height: 100vh;
+    cursor: crosshair;
+  }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="game" width="900" height="640"></canvas></div>
+<script>
+'use strict';
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const GROUND = H - 30;
+
+// ---------- Состояние игры ----------
+const S = { MENU: 0, PLAY: 1, OVER: 2 };
+let state = S.MENU;
+let score = 0, lives = 3, best = 0;
+try { best = +localStorage.getItem('winemakerBest') || 0; } catch (e) {}
+let bottles = [], particles = [], floaters = [];
+let spawnTimer = 0, elapsed = 0, lastTime = 0;
+
+// ---------- Винодел ----------
+const player = {
+  x: W / 2, w: 110, speed: 520,
+  targetX: null, left: false, right: false,
+  wobble: 0
+};
+
+// ---------- Типы бутылок ----------
+// 'ru'  — российское игристое: ловить, бонус
+// 'dp'  — Дом Периньон: НЕ ловить, разбивать кликом
+function spawnBottle() {
+  const isDP = Math.random() < Math.min(0.25 + elapsed / 240, 0.45);
+  bottles.push({
+    kind: isDP ? 'dp' : 'ru',
+    x: 60 + Math.random() * (W - 120),
+    y: -60,
+    vy: 110 + Math.random() * 60 + Math.min(elapsed * 3.5, 220),
+    rot: (Math.random() - 0.5) * 0.4,
+    vrot: (Math.random() - 0.5) * 1.2,
+    r: 34
+  });
+}
+
+// ---------- Эффекты ----------
+function burst(x, y, colors, n) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, sp = 60 + Math.random() * 240;
+    particles.push({
+      x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 120,
+      life: 0.6 + Math.random() * 0.5,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      size: 2 + Math.random() * 4
+    });
+  }
+}
+function floatText(x, y, text, color) {
+  floaters.push({ x, y, text, color, life: 1.2 });
+}
+
+// ---------- Ввод ----------
+addEventListener('keydown', e => {
+  if (e.code === 'ArrowLeft' || e.code === 'KeyA') player.left = true;
+  if (e.code === 'ArrowRight' || e.code === 'KeyD') player.right = true;
+  if ((e.code === 'Space' || e.code === 'Enter') && state !== S.PLAY) startGame();
+});
+addEventListener('keyup', e => {
+  if (e.code === 'ArrowLeft' || e.code === 'KeyA') player.left = false;
+  if (e.code === 'ArrowRight' || e.code === 'KeyD') player.right = false;
+});
+
+function canvasPos(e) {
+  const r = canvas.getBoundingClientRect();
+  const t = e.touches ? e.touches[0] : e;
+  return { x: (t.clientX - r.left) * (W / r.width), y: (t.clientY - r.top) * (H / r.height) };
+}
+
+canvas.addEventListener('pointerdown', e => {
+  const p = canvasPos(e);
+  if (state !== S.PLAY) { startGame(); return; }
+  // клик по Дом Периньону — разбить!
+  for (let i = bottles.length - 1; i >= 0; i--) {
+    const b = bottles[i];
+    if (Math.hypot(b.x - p.x, b.y - p.y) < b.r + 14) {
+      if (b.kind === 'dp') {
+        bottles.splice(i, 1);
+        score += 15;
+        burst(b.x, b.y, ['#d4b24a', '#2a2a2a', '#8a7a30', '#e8e0c0'], 26);
+        floatText(b.x, b.y, '+15 Разбил!', '#f0d060');
+      } else {
+        // разбил своё, российское — штраф
+        bottles.splice(i, 1);
+        score = Math.max(0, score - 5);
+        burst(b.x, b.y, ['#3a6b35', '#c8d8e8', '#ffffff'], 18);
+        floatText(b.x, b.y, '−5 Своё же!', '#ff8080');
+      }
+      return;
+    }
+  }
+  // иначе — двигаем винодела к точке
+  player.targetX = p.x;
+});
+canvas.addEventListener('pointermove', e => {
+  if (state === S.PLAY && e.buttons) player.targetX = canvasPos(e).x;
+});
+
+function startGame() {
+  state = S.PLAY;
+  score = 0; lives = 3; elapsed = 0; spawnTimer = 0;
+  bottles = []; particles = []; floaters = [];
+  player.x = W / 2; player.targetX = null;
+}
+
+function gameOver() {
+  state = S.OVER;
+  if (score > best) {
+    best = score;
+    try { localStorage.setItem('winemakerBest', best); } catch (e) {}
+  }
+}
+
+// ---------- Обновление ----------
+function update(dt) {
+  if (state !== S.PLAY) return;
+  elapsed += dt;
+  player.wobble += dt * 6;
+
+  // движение винодела
+  if (player.left) { player.x -= player.speed * dt; player.targetX = null; }
+  if (player.right) { player.x += player.speed * dt; player.targetX = null; }
+  if (player.targetX !== null) {
+    const d = player.targetX - player.x;
+    if (Math.abs(d) > 6) player.x += Math.sign(d) * Math.min(Math.abs(d), player.speed * dt);
+  }
+  player.x = Math.max(player.w / 2, Math.min(W - player.w / 2, player.x));
+
+  // спавн
+  spawnTimer -= dt;
+  if (spawnTimer <= 0) {
+    spawnBottle();
+    spawnTimer = Math.max(0.45, 1.35 - elapsed / 60);
+  }
+
+  // бутылки
+  const catchY = GROUND - 95;
+  for (let i = bottles.length - 1; i >= 0; i--) {
+    const b = bottles[i];
+    b.y += b.vy * dt;
+    b.rot += b.vrot * dt;
+
+    // попала в корзину?
+    if (b.y > catchY && b.y < catchY + 55 && Math.abs(b.x - player.x) < player.w / 2 + 8) {
+      bottles.splice(i, 1);
+      if (b.kind === 'ru') {
+        score += 10;
+        burst(b.x, b.y, ['#ffd700', '#fffbe0', '#ffec80'], 14);
+        floatText(b.x, b.y - 20, '+10 Наше!', '#ffe066');
+      } else {
+        lives--;
+        burst(b.x, b.y, ['#d4b24a', '#2a2a2a'], 20);
+        floatText(b.x, b.y - 20, 'Дом Периньон в корзине! −жизнь', '#ff6060');
+        if (lives <= 0) gameOver();
+      }
+      continue;
+    }
+
+    // упала на землю
+    if (b.y > GROUND - 10) {
+      bottles.splice(i, 1);
+      if (b.kind === 'ru') {
+        lives--;
+        burst(b.x, GROUND - 10, ['#3a6b35', '#c8d8e8', '#ffffff'], 18);
+        floatText(b.x, GROUND - 40, 'Разбилось наше! −жизнь', '#ff6060');
+        if (lives <= 0) gameOver();
+      } else {
+        score += 5;
+        burst(b.x, GROUND - 10, ['#d4b24a', '#2a2a2a', '#8a7a30'], 18);
+        floatText(b.x, GROUND - 40, '+5 Вдребезги!', '#f0d060');
+      }
+    }
+  }
+
+  // частицы
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.life -= dt;
+    if (p.life <= 0) { particles.splice(i, 1); continue; }
+    p.vy += 500 * dt;
+    p.x += p.vx * dt; p.y += p.vy * dt;
+  }
+  for (let i = floaters.length - 1; i >= 0; i--) {
+    const f = floaters[i];
+    f.life -= dt; f.y -= 35 * dt;
+    if (f.life <= 0) floaters.splice(i, 1);
+  }
+}
+
+// ---------- Отрисовка ----------
+function drawBackground() {
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#2b1530');
+  g.addColorStop(0.6, '#4a2440');
+  g.addColorStop(1, '#6b3450');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+
+  // виноградники на горизонте
+  ctx.fillStyle = 'rgba(30, 50, 30, 0.55)';
+  for (let row = 0; row < 3; row++) {
+    const y = GROUND - 160 + row * 20;
+    ctx.beginPath();
+    for (let x = -20; x <= W + 20; x += 46) {
+      ctx.moveTo(x, y + 14);
+      ctx.quadraticCurveTo(x + 12, y - 8, x + 24, y + 14);
+    }
+    ctx.fill();
+  }
+
+  // луна
+  ctx.fillStyle = 'rgba(255, 240, 200, 0.9)';
+  ctx.beginPath(); ctx.arc(W - 110, 90, 34, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(43, 21, 48, 0.35)';
+  ctx.beginPath(); ctx.arc(W - 122, 82, 30, 0, Math.PI * 2); ctx.fill();
+
+  // земля
+  ctx.fillStyle = '#3a2418';
+  ctx.fillRect(0, GROUND, W, H - GROUND);
+  ctx.fillStyle = '#4d3020';
+  ctx.fillRect(0, GROUND, W, 6);
+}
+
+function drawBottle(b) {
+  ctx.save();
+  ctx.translate(b.x, b.y);
+  ctx.rotate(b.rot);
+  const dp = b.kind === 'dp';
+
+  // тело бутылки
+  ctx.fillStyle = dp ? '#1c1c22' : '#20501e';
+  ctx.beginPath();
+  ctx.moveTo(-13, -8);
+  ctx.quadraticCurveTo(-15, -18, -5, -22);
+  ctx.lineTo(-5, -38);
+  ctx.lineTo(5, -38);
+  ctx.lineTo(5, -22);
+  ctx.quadraticCurveTo(15, -18, 13, -8);
+  ctx.lineTo(13, 30);
+  ctx.quadraticCurveTo(13, 34, 9, 34);
+  ctx.lineTo(-9, 34);
+  ctx.quadraticCurveTo(-13, 34, -13, 30);
+  ctx.closePath();
+  ctx.fill();
+
+  // фольга на горлышке
+  ctx.fillStyle = dp ? '#c9b037' : '#b8b8c8';
+  ctx.fillRect(-5.5, -42, 11, 12);
+
+  // блик
+  ctx.fillStyle = 'rgba(255,255,255,0.18)';
+  ctx.fillRect(-10, -6, 4, 36);
+
+  // этикетка
+  if (dp) {
+    // щит Дом Периньон
+    ctx.fillStyle = '#e8e0c8';
+    ctx.beginPath();
+    ctx.moveTo(-10, 2); ctx.lineTo(10, 2); ctx.lineTo(10, 18);
+    ctx.quadraticCurveTo(0, 28, -10, 18);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#8a7a30'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = '#3a3a3a';
+    ctx.font = 'bold 7px Georgia';
+    ctx.textAlign = 'center';
+    ctx.fillText('DOM', 0, 10);
+    ctx.fillText('PÉRIGNON', 0, 18);
+  } else {
+    // триколор российского игристого
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(-10, 2, 20, 6);
+    ctx.fillStyle = '#2a5caa'; ctx.fillRect(-10, 8, 20, 6);
+    ctx.fillStyle = '#c83232'; ctx.fillRect(-10, 14, 20, 6);
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1;
+    ctx.strokeRect(-10, 2, 20, 18);
+    ctx.fillStyle = '#1a1a1a';
+    ctx.font = 'bold 6px Georgia';
+    ctx.textAlign = 'center';
+    ctx.fillText('ИГРИСТОЕ', 0, 26);
+  }
+  ctx.restore();
+}
+
+function drawPlayer() {
+  const x = player.x, y = GROUND;
+  const sway = Math.sin(player.wobble) * 2;
+  ctx.save();
+  ctx.translate(x, y);
+
+  // ноги
+  ctx.strokeStyle = '#2a2a35'; ctx.lineWidth = 9; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-10, -42); ctx.lineTo(-13, -4);
+  ctx.moveTo(10, -42); ctx.lineTo(13, -4);
+  ctx.stroke();
+
+  // туловище (фартук винодела)
+  ctx.fillStyle = '#6b2737';
+  ctx.beginPath();
+  ctx.moveTo(-18, -88); ctx.lineTo(18, -88);
+  ctx.lineTo(22, -40); ctx.lineTo(-22, -40);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#8a3345';
+  ctx.fillRect(-14, -80, 28, 34);
+
+  // голова
+  ctx.fillStyle = '#e8b88a';
+  ctx.beginPath(); ctx.arc(sway, -102, 15, 0, Math.PI * 2); ctx.fill();
+  // усы
+  ctx.strokeStyle = '#4a3020'; ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(sway - 8, -97); ctx.quadraticCurveTo(sway, -93, sway + 8, -97);
+  ctx.stroke();
+  // берет
+  ctx.fillStyle = '#3a2a4a';
+  ctx.beginPath();
+  ctx.ellipse(sway - 2, -114, 17, 8, -0.15, 0, Math.PI * 2);
+  ctx.fill();
+
+  // руки, держащие корзину
+  ctx.strokeStyle = '#6b2737'; ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.moveTo(-16, -80); ctx.lineTo(-player.w / 2 + 8, -62);
+  ctx.moveTo(16, -80); ctx.lineTo(player.w / 2 - 8, -62);
+  ctx.stroke();
+
+  // корзина
+  ctx.fillStyle = '#9c6b30';
+  ctx.beginPath();
+  ctx.moveTo(-player.w / 2, -68);
+  ctx.lineTo(player.w / 2, -68);
+  ctx.lineTo(player.w / 2 - 12, -34);
+  ctx.lineTo(-player.w / 2 + 12, -34);
+  ctx.closePath(); ctx.fill();
+  // плетение
+  ctx.strokeStyle = '#7a5224'; ctx.lineWidth = 2;
+  for (let i = 1; i < 4; i++) {
+    const t = i / 4;
+    ctx.beginPath();
+    ctx.moveTo(-player.w / 2 + 12 * t, -68 + 34 * t);
+    ctx.lineTo(player.w / 2 - 12 * t, -68 + 34 * t);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = '#b8823c'; ctx.lineWidth = 4;
+  ctx.strokeRect(-player.w / 2, -70, player.w, 4);
+
+  ctx.restore();
+}
+
+function drawHUD() {
+  ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.fillRect(0, 0, W, 46);
+  ctx.fillStyle = '#ffe8b0';
+  ctx.font = 'bold 22px Georgia';
+  ctx.fillText('Очки: ' + score, 20, 30);
+  ctx.fillText('Рекорд: ' + best, 180, 30);
+  // жизни — бокалы
+  ctx.textAlign = 'right';
+  let hearts = '';
+  for (let i = 0; i < lives; i++) hearts += '🥂';
+  for (let i = lives; i < 3; i++) hearts += '▫️';
+  ctx.font = '24px serif';
+  ctx.fillText(hearts, W - 20, 32);
+}
+
+function drawCenteredPanel(lines) {
+  ctx.fillStyle = 'rgba(20, 8, 24, 0.82)';
+  const pw = 620, ph = 60 + lines.length * 40;
+  ctx.fillRect((W - pw) / 2, (H - ph) / 2, pw, ph);
+  ctx.strokeStyle = '#d4b24a'; ctx.lineWidth = 2;
+  ctx.strokeRect((W - pw) / 2, (H - ph) / 2, pw, ph);
+  ctx.textAlign = 'center';
+  lines.forEach((l, i) => {
+    ctx.fillStyle = l.color || '#ffe8b0';
+    ctx.font = l.font || '20px Georgia';
+    ctx.fillText(l.text, W / 2, (H - ph) / 2 + 50 + i * 40);
+  });
+}
+
+function draw() {
+  drawBackground();
+  bottles.forEach(drawBottle);
+  drawPlayer();
+
+  // частицы
+  particles.forEach(p => {
+    ctx.globalAlpha = Math.max(0, p.life);
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+  });
+  ctx.globalAlpha = 1;
+
+  // всплывающий текст
+  floaters.forEach(f => {
+    ctx.globalAlpha = Math.min(1, f.life);
+    ctx.fillStyle = f.color;
+    ctx.font = 'bold 18px Georgia';
+    ctx.textAlign = 'center';
+    ctx.fillText(f.text, f.x, f.y);
+  });
+  ctx.globalAlpha = 1;
+
+  drawHUD();
+
+  if (state === S.MENU) {
+    drawCenteredPanel([
+      { text: '🍾 Винодел: Поймай игристое! 🍾', font: 'bold 30px Georgia', color: '#ffd700' },
+      { text: 'Лови российское игристое корзиной — +10 очков', color: '#a0e8a0' },
+      { text: 'Дом Периньон НЕ лови! Разбивай его кликом (+15)', color: '#f0d060' },
+      { text: 'Поймал Периньон или уронил наше — минус жизнь', color: '#ff9090' },
+      { text: 'Управление: ← → / A D, мышь или палец', color: '#c0c0d8' },
+      { text: 'Нажми, чтобы начать', font: 'bold 24px Georgia' }
+    ]);
+  } else if (state === S.OVER) {
+    drawCenteredPanel([
+      { text: 'Игра окончена!', font: 'bold 32px Georgia', color: '#ff9090' },
+      { text: 'Твой результат: ' + score + ' очков', font: 'bold 24px Georgia' },
+      { text: score >= best && score > 0 ? '🏆 Новый рекорд!' : 'Рекорд: ' + best, color: '#ffd700' },
+      { text: 'Нажми, чтобы сыграть ещё раз', font: 'bold 22px Georgia' }
+    ]);
+  }
+}
+
+// ---------- Цикл ----------
+function loop(t) {
+  const dt = Math.min((t - lastTime) / 1000, 0.05);
+  lastTime = t;
+  update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(t => { lastTime = t; requestAnimationFrame(loop); });
+
+// адаптация под окно
+function fit() {
+  const scale = Math.min(innerWidth / W, innerHeight / H, 1);
+  canvas.style.width = W * scale + 'px';
+  canvas.style.height = H * scale + 'px';
+}
+addEventListener('resize', fit);
+fit();
+</script>
+</body>
+</html>
