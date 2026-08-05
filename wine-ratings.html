@@ -102,10 +102,22 @@
     color: var(--brand-red);
     font-weight: 600;
   }
-  .fg-ratings .fg-rating-heading__count {
-    color: var(--ink-faint);
+  /* Прямая подсказка под названием: без неё кликабельность заголовка
+     приходится угадывать. */
+  .fg-ratings .fg-rating-heading__hint {
+    display: block;
+    margin-top: 10px;
+    font-size: 14px;
+    line-height: 1.3;
     font-weight: 500;
-    margin-left: 8px;
+    color: var(--ink-faint);
+    transition: color 0.15s ease;
+  }
+  .fg-ratings .fg-rating-heading__btn:hover .fg-rating-heading__hint {
+    color: var(--brand-red);
+  }
+  .fg-ratings .fg-rating-heading__btn[aria-expanded="true"] .fg-rating-heading__hint {
+    visibility: hidden;
   }
   .fg-ratings .fg-rating-heading__row {
     display: inline-flex;
@@ -1053,11 +1065,12 @@
 
     <div class="fg-rating-heading fg-filter" data-filter="rating">
       <button class="fg-filter__btn fg-rating-heading__btn" type="button" aria-haspopup="listbox" aria-expanded="false">
-        <span class="fg-rating-heading__label">Выбрать рейтинг<span class="fg-rating-heading__count" id="fg-rating-count"></span></span>
+        <span class="fg-rating-heading__label">Выбрать рейтинг</span>
         <span class="fg-rating-heading__row">
           <span class="fg-filter__value fg-rating-heading__title"></span>
           <span class="fg-rating-heading__chevron" aria-hidden="true">⌄</span>
         </span>
+        <span class="fg-rating-heading__hint" id="fg-rating-hint"></span>
       </button>
     </div>
 
@@ -1206,11 +1219,6 @@
     RATINGS = DATA.ratings;
     state.rating = RATINGS[0] || null;
     DEFAULT_RATING = state.rating;
-    const ratingCountEl = document.getElementById("fg-rating-count");
-    if (ratingCountEl && RATINGS.length > 1) {
-      ratingCountEl.textContent =
-        `· ${RATINGS.length} ${pluralize(RATINGS.length, "рейтинг", "рейтинга", "рейтингов")}`;
-    }
     buildSlugMap();
     applyHashState();
     render();
@@ -1830,6 +1838,24 @@
         valueEl.classList.add("fg-filter__value--placeholder");
       }
     });
+    updateRatingHint();
+  }
+
+  // Подсказка живёт под названием рейтинга и пересчитывается при его смене:
+  // «остальные» считаются относительно уже выбранного.
+  function updateRatingHint() {
+    const hintEl = document.getElementById("fg-rating-hint");
+    if (!hintEl) return;
+    const total = (RATINGS || []).length;
+    if (!total) { hintEl.textContent = ""; return; }
+    if (!state.rating) {
+      hintEl.textContent = "Нажмите, чтобы выбрать рейтинг";
+      return;
+    }
+    const others = total - 1;
+    hintEl.textContent = others > 0
+      ? `Нажмите, чтобы увидеть остальные ${others} ${pluralize(others, "рейтинг", "рейтинга", "рейтингов")}`
+      : "";
   }
 
   function renderChips() {
