@@ -102,9 +102,14 @@
     color: var(--brand-red);
     font-weight: 600;
   }
+  .fg-ratings .fg-rating-heading__count {
+    color: var(--ink-faint);
+    font-weight: 500;
+    margin-left: 8px;
+  }
   .fg-ratings .fg-rating-heading__row {
     display: inline-flex;
-    align-items: baseline;
+    align-items: center;
     gap: 18px;
     max-width: 100%;
     font-size: 48px;
@@ -120,6 +125,12 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    /* Постоянное подчёркивание — единственный намёк, что заголовок кликабельный
+       до наведения мыши; на тач-устройствах hover не случается вовсе. */
+    text-decoration: underline;
+    text-decoration-color: var(--ink-faint);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 8px;
   }
   /* The heading uses .fg-filter__btn for behavior, but it must NOT show
      the small generic chevron from .fg-filter__btn::after — it has its own
@@ -127,13 +138,30 @@
   .fg-ratings .fg-rating-heading__btn::after {
     display: none;
   }
+  /* Шеврон в круге читается как элемент управления, а не как декорация. */
   .fg-ratings .fg-rating-heading__chevron {
-    font-size: 0.45em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    box-sizing: border-box;
+    padding-bottom: 6px;
+    border: 2px solid var(--rule);
+    border-radius: 50%;
+    background: var(--paper-warm);
+    font-size: 22px;
     font-weight: 300;
-    color: var(--ink-faint);
+    color: var(--ink-soft);
     line-height: 1;
-    transition: transform 0.2s ease;
+    transition: transform 0.2s ease, border-color 0.15s ease,
+                color 0.15s ease, background-color 0.15s ease;
     flex: 0 0 auto;
+  }
+  .fg-ratings .fg-rating-heading__btn:hover .fg-rating-heading__chevron {
+    border-color: var(--brand-red);
+    color: var(--brand-red);
+    background: var(--paper-deep);
   }
   .fg-ratings .fg-rating-heading__btn[aria-expanded="true"] .fg-rating-heading__chevron {
     transform: rotate(180deg);
@@ -144,9 +172,22 @@
   @media (max-width: 880px) {
     .fg-ratings .fg-rating-heading__row { font-size: 40px; }
     .fg-ratings .fg-rating-heading { margin-bottom: 24px; }
+    /* На узком экране длинное название лучше перенести на вторую строку,
+       чем обрезать многоточием — иначе от него остаётся «Лучшее от Фа…». */
+    .fg-ratings .fg-rating-heading__title {
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+      /* В две-три строки подчёркивание превращается в сплошную «ссылку» —
+         на узком экране кликабельность держат надзаголовок и шеврон. */
+      text-decoration: none;
+    }
   }
   @media (max-width: 480px) {
-    .fg-ratings .fg-rating-heading__row { font-size: 30px; gap: 20px; }
+    .fg-ratings .fg-rating-heading__row { font-size: 30px; gap: 14px; }
+    .fg-ratings .fg-rating-heading__chevron {
+      width: 36px; height: 36px; font-size: 18px; padding-bottom: 5px;
+    }
   }
 
   /* ============ FILTER BAR ============ */
@@ -1012,7 +1053,7 @@
 
     <div class="fg-rating-heading fg-filter" data-filter="rating">
       <button class="fg-filter__btn fg-rating-heading__btn" type="button" aria-haspopup="listbox" aria-expanded="false">
-        <span class="fg-rating-heading__label">Выбрать рейтинг</span>
+        <span class="fg-rating-heading__label">Выбрать рейтинг<span class="fg-rating-heading__count" id="fg-rating-count"></span></span>
         <span class="fg-rating-heading__row">
           <span class="fg-filter__value fg-rating-heading__title"></span>
           <span class="fg-rating-heading__chevron" aria-hidden="true">⌄</span>
@@ -1165,6 +1206,11 @@
     RATINGS = DATA.ratings;
     state.rating = RATINGS[0] || null;
     DEFAULT_RATING = state.rating;
+    const ratingCountEl = document.getElementById("fg-rating-count");
+    if (ratingCountEl && RATINGS.length > 1) {
+      ratingCountEl.textContent =
+        `· ${RATINGS.length} ${pluralize(RATINGS.length, "рейтинг", "рейтинга", "рейтингов")}`;
+    }
     buildSlugMap();
     applyHashState();
     render();
