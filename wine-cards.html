@@ -21,8 +21,12 @@
     На кнопке региона: название из REGIONS (скрипт внизу), под ним — сезон из rating_subtitle
     (часть после «·») и число карт. Регион без блока или без ресторанов просто не показывается.
   Порядок кнопок и регион по умолчанию (первый) — массив REGIONS в скрипте.
-  Ссылкой: wine-cards.html?region=south (или #south); для Юга можно добавить &city=Сочи.
-  Старая ссылка wine-cards-south.html переадресует сюда же (?region=south).
+  Прямые ссылки: wine-cards.html?region=moscow и wine-cards.html?region=south (или #moscow / #south);
+  для Юга можно добавить &city=Сочи. Старая ссылка wine-cards-south.html переадресует на ?region=south.
+  Во встроенном виде (Tilda, iframe) страница-хозяин может прислать
+    {type: "fg-cards-set-region", region: "south"}  — переключить регион,
+  а сама страница при смене региона сообщает {type: "fg-cards-region", region: "south"}:
+  так сниппет на главной держит в адресной строке ссылку firstguide.ru/#moscow или #south.
 
   Поля ресторана:
     rank          — место (1..50)
@@ -2007,6 +2011,10 @@
     applyRegionHeader();
     buildCityFilter("");
     render();
+    // встроенный блок: сообщить странице-хозяину, чтобы ссылка в её адресной строке вела на этот регион
+    if (window.parent !== window) {
+      try { window.parent.postMessage({ type: "fg-cards-region", region: reg.key }, "*"); } catch (e) {}
+    }
     // адрес страницы — под выбранный регион, чтобы ссылкой можно было поделиться (в iframe не мешает)
     try {
       const u = new URL(window.location.href);
@@ -2020,6 +2028,13 @@
     const btn = e.target && e.target.closest ? e.target.closest(".fg-region__btn") : null;
     if (!btn) return;
     const reg = REGIONS.filter(function (x) { return x.key === btn.getAttribute("data-region"); })[0];
+    if (reg && reg !== REGION) setRegion(reg);
+  });
+  // страница-хозяин (Tilda) переключает регион по своей ссылке: {type: "fg-cards-set-region", region: "south"}
+  window.addEventListener("message", function (e) {
+    if (!e || !e.data || e.data.type !== "fg-cards-set-region") return;
+    const key = String(e.data.region || "").toLowerCase();
+    const reg = REGIONS.filter(function (x) { return x.key === key; })[0];
     if (reg && reg !== REGION) setRegion(reg);
   });
 
