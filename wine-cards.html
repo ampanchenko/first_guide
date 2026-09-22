@@ -13,9 +13,16 @@
   ЛУЧШИЕ РОССИЙСКИЕ ВИННЫЕ КАРТЫ · ПЕРВЫЙ ГИД
   Self-contained HTML block. Paste into Tilda T123 (HTML) container.
 
-  Чтобы обновить данные:
-    Замените содержимое <script id="fg-cards-data"> на свежий JSON.
-    Формат: {"rating_title": "...", "rating_subtitle": "...", "restaurants": [...]}
+  Два региона на одной странице — переключатель «Москва / Юг России» под заголовком.
+  У каждого региона свой блок данных, они обновляются независимо:
+    Москва — <script id="fg-cards-data">        заменить содержимое на свежий JSON (как раньше)
+    Юг     — <script id="fg-cards-data-south">  вписывает Карты ЮГ 2026/Скрипты/build_site_south.py
+    Формат обоих: {"rating_title": "...", "rating_subtitle": "Регион · сезон", "restaurants": [...]}
+    На кнопке региона: название из REGIONS (скрипт внизу), под ним — сезон из rating_subtitle
+    (часть после «·») и число карт. Регион без блока или без ресторанов просто не показывается.
+  Порядок кнопок и регион по умолчанию (первый) — массив REGIONS в скрипте.
+  Ссылкой: wine-cards.html?region=south (или #south); для Юга можно добавить &city=Сочи.
+  Старая ссылка wine-cards-south.html переадресует сюда же (?region=south).
 
   Поля ресторана:
     rank          — место (1..50)
@@ -40,6 +47,10 @@
     median_bottle_rub — медиана бутылки, ₽
     address        — почтовый адрес (string; если пусто — строка скрыта)
     website        — URL сайта (string; если пусто — ссылка скрыта)
+    city           — город (Юг): мелко в строке названия, по нему работает фильтр «Город»;
+                     у Москвы поля нет — город не показывается и фильтра нет.
+                     Адрес: у Москвы записан без города (при выводе дописывается «Москва, »),
+                     у Юга — полностью, с городом.
 ========================================================================
 -->
 
@@ -135,6 +146,63 @@
   @media (max-width: 480px) {
     .fg-cards .fg-page-head__title { font-size: 28px; }
     .fg-cards .fg-page-head__sub { font-size: 14px; }
+  }
+
+
+  /* ============ REGION SWITCHER (Москва / Юг России) ============ */
+  .fg-cards .fg-region {
+    display: inline-grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    margin: 6px 0 0 0;
+    border: 1px solid var(--ink);
+    border-radius: 3px;
+    overflow: hidden;
+    max-width: 100%;
+  }
+  .fg-cards .fg-region[hidden] { display: none; }
+  .fg-cards .fg-region__btn {
+    font-family: inherit;
+    text-align: left;
+    color: var(--ink);
+    background: transparent;
+    border: 0;
+    border-left: 1px solid var(--ink);
+    min-width: 210px;
+    padding: 12px 22px 11px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+  .fg-cards .fg-region__btn:first-child { border-left: 0; }
+  .fg-cards .fg-region__name {
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+  .fg-cards .fg-region__meta {
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.3;
+    letter-spacing: 0.02em;
+    color: var(--ink-faint);
+  }
+  .fg-cards .fg-region__btn:hover { background: rgba(26, 22, 20, 0.07); }
+  .fg-cards .fg-region__btn.is-active {
+    background: var(--ink);
+    color: var(--paper-warm);
+    cursor: default;
+  }
+  .fg-cards .fg-region__btn.is-active .fg-region__meta { color: rgba(237, 231, 211, 0.72); }
+  .fg-cards .fg-region__btn:focus-visible { outline: 2px solid var(--brand-red); outline-offset: -4px; }
+  @media (max-width: 600px) {
+    .fg-cards .fg-region { display: grid; width: 100%; }
+    .fg-cards .fg-region__btn { min-width: 0; padding: 10px 14px 9px; }
+    .fg-cards .fg-region__name { font-size: 16px; }
+    .fg-cards .fg-region__meta { font-size: 11px; }
   }
 
   /* ============ TOP-10 PLACEHOLDER ============ */
@@ -258,6 +326,51 @@
     .fg-cards .fg-sort__btn { font-size: 12px; padding: 5px 10px; }
   }
 
+  /* City filter chips — внешний вид как у чипов сортировки; строка есть только у регионов с несколькими городами */
+  .fg-cards .fg-city {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+    margin: 0 0 12px 0;
+  }
+  .fg-cards .fg-city[hidden] { display: none; }
+  .fg-cards .fg-city__btn {
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .fg-cards .fg-city__count {
+    font-size: 11px;
+    opacity: 0.55;
+    font-variant-numeric: tabular-nums;
+  }
+  .fg-cards .fg-city__btn:hover {
+    border-color: var(--ink-faint);
+    color: var(--ink);
+  }
+  .fg-cards .fg-city__btn.is-active {
+    background: var(--ink);
+    color: var(--paper-warm);
+    border-color: var(--ink);
+  }
+  .fg-cards .fg-city__btn.is-active .fg-city__count { opacity: 0.8; }
+  @media (max-width: 600px) {
+    .fg-cards .fg-city { gap: 6px 8px; margin-bottom: 12px; }
+    .fg-cards .fg-city__btn { font-size: 12px; padding: 5px 10px; }
+  }
+
   /* ============ ENTRIES LIST ============ */
   .fg-cards .fg-entries {
     display: flex;
@@ -336,6 +449,16 @@
     line-height: 1.25;
     letter-spacing: -0.01em;
     word-break: break-word;
+  }
+  .fg-cards .fg-entry__city {
+    font-size: 0.68em;
+    font-weight: 500;
+    color: var(--ink-faint);
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+  }
+  .fg-cards .fg-entry__city-sep {
+    margin: 0 0.45em;
   }
   .fg-cards .fg-entry__brief {
     display: block;
@@ -731,9 +854,11 @@
       <span class="fg-page-head__label" id="fg-page-label">Рейтинг</span>
       <h1 class="fg-page-head__title" id="fg-page-title">Лучшие карты российского вина</h1>
       <p class="fg-page-head__sub" id="fg-page-sub">Москва · весна 2026</p>
+      <div class="fg-region" id="fg-region" role="group" aria-label="Регион" hidden></div>
     </header>
 
     <section class="fg-section">
+      <div class="fg-city" id="fg-city-filter" role="group" aria-label="Город" hidden><span class="fg-sort__label">Город</span></div>
       <div class="fg-sort" role="tablist" aria-label="Сортировка">
         <span class="fg-sort__label">Сортировка</span>
         <button class="fg-sort__btn is-active" data-sort="rank"   type="button"><span class="fg-sort__txt">по рейтингу</span><span class="fg-sort__arrow" aria-hidden="true">↑</span></button>
@@ -752,31 +877,849 @@
 
 </script>
 
+<script id="fg-cards-data-south" type="application/json">
+{
+ "rating_title": "Лучшие карты российского вина",
+ "rating_subtitle": "Юг России · осень 2026",
+ "restaurants": [
+  {
+   "rank": 1,
+   "name": "Шато де Талю",
+   "city": "Геленджик",
+   "segment": "🏆 Лидер",
+   "nomination": "Лучший выбор игристых",
+   "cuisine": "русско-французская кухня",
+   "description": "В карте 190 вин из 16 регионов России — оба показателя максимальные в рейтинге. 28 игристых во всех шести стилях: от классического брюта до петната, есть Блан де Блан и Блан де Нуар. Ресторан работает при винодельне, при этом собственные вина Chateau de Talu — 22 позиции из 190: рядом с ними Галицкий и Галицкий (13), Усадьба Дивноморское и Винодельня Раевское (по 10), Domaine Lipko (9). 47 блендов и 40 односортовых вин. По бокалам — 25 позиций, из них 14 красных.",
+   "sommelier": "",
+   "address": "Геленджик, ул. Фадеева, 52А",
+   "website": "https://chateaudetalu.ru/restaurant-at-the-winery/",
+   "depth": 190,
+   "mono_grapes": 40,
+   "blends": 47,
+   "producers": 39,
+   "regions": 16,
+   "types_in_card": "5/6",
+   "autochthons": "4 : 16",
+   "sparkling_subtypes": "6/6",
+   "card_breakdown": {
+    "red": 69,
+    "white": 71,
+    "rose": 11,
+    "sparkling": 28,
+    "orange": 6,
+    "sweet": 5
+   },
+   "btg": {
+    "red": 14,
+    "white": 5,
+    "rose": 2,
+    "sparkling": 1,
+    "orange": 0,
+    "sweet": 3
+   },
+   "btg_types_count": "5/6",
+   "median_glass_rub": 1090,
+   "median_bottle_rub": 6490
+  },
+  {
+   "rank": 2,
+   "name": "Cafe Krasnodar",
+   "city": "Краснодар",
+   "segment": "🏆 Лидер",
+   "nomination": "",
+   "cuisine": "авторская кухня из локальных продуктов",
+   "description": "По бокалам можно попробовать вино любого цвета и стиля: красное, белое, розовое, оранжевое, игристое, сладкое — всего 17 позиций. В карте 106 вин от 33 хозяйств из 12 регионов России. Двадцать игристых в пяти стилях, включая Блан де Блан и Блан де Нуар. Главные хозяйства — Галицкий и Галицкий (13 вин), Усадьба Дивноморское (11), Николаев и сыновья (9). Бокал в среднем стоит 1 300 рублей, бутылка — 5 900.",
+   "sommelier": "",
+   "address": "Краснодар, ул. Разведчика Леонова, 4",
+   "website": "https://cafekrasnodar.ru/",
+   "depth": 106,
+   "mono_grapes": 30,
+   "blends": 31,
+   "producers": 33,
+   "regions": 12,
+   "types_in_card": "6/6",
+   "autochthons": "4 : 11",
+   "sparkling_subtypes": "5/6",
+   "card_breakdown": {
+    "red": 38,
+    "white": 32,
+    "rose": 8,
+    "sparkling": 20,
+    "orange": 4,
+    "sweet": 4
+   },
+   "btg": {
+    "red": 5,
+    "white": 6,
+    "rose": 2,
+    "sparkling": 1,
+    "orange": 2,
+    "sweet": 1
+   },
+   "btg_types_count": "6/6",
+   "median_glass_rub": 1300,
+   "median_bottle_rub": 5900
+  },
+  {
+   "rank": 3,
+   "name": "Баран-рапан",
+   "city": "Сочи",
+   "segment": "🏆 Лидер",
+   "nomination": "",
+   "cuisine": "черноморская кухня",
+   "description": "93 вина от 51 хозяйства — больше виноделен нет ни в одной карте рейтинга. У 24 хозяйств в карте по одной позиции, у 18 — по две; больше всего вин у Усадьбы Дивноморское (6), Uppa Winery (5) и Константина Дзитоева (4). 15 регионов России. Восемнадцать игристых во всех шести стилях — от брюта до петната. Семь российских автохтонных сортов, среди них крымские Кефесия и Кокур, донские Сибирьковый и Цимлянский Чёрный, селекционная Виорика.",
+   "sommelier": "Максим Кочнев",
+   "address": "Сочи, ул. Театральная, 11",
+   "website": "https://baranrapan.ru/",
+   "depth": 93,
+   "mono_grapes": 28,
+   "blends": 18,
+   "producers": 51,
+   "regions": 15,
+   "types_in_card": "5/6",
+   "autochthons": "7 : 12",
+   "sparkling_subtypes": "6/6",
+   "card_breakdown": {
+    "red": 33,
+    "white": 33,
+    "rose": 3,
+    "sparkling": 18,
+    "orange": 4,
+    "sweet": 2
+   },
+   "btg": {
+    "red": 3,
+    "white": 2,
+    "rose": 0,
+    "sparkling": 2,
+    "orange": 1,
+    "sweet": 1
+   },
+   "btg_types_count": "5/6",
+   "median_glass_rub": 820,
+   "median_bottle_rub": 6000
+  },
+  {
+   "rank": 4,
+   "name": "Rodina южной кухни",
+   "city": "Краснодар",
+   "segment": "🏆 Лидер",
+   "nomination": "",
+   "cuisine": "кухня Юга России и Кавказа",
+   "description": "Тридцать позиций по бокалам, и среди них есть вино любого цвета и стиля: 10 красных, 11 белых, 4 розовых, игристое, оранжевое, сладкое. В карте 72 вина от 30 хозяйств, 27 блендов. Десять позиций с российскими автохтонными сортами — Красностоп Золотовский, Цимлянский Чёрный, Сибирьковый, Кумшацкий Белый, Плечистик. Главные хозяйства — Галицкий и Галицкий (7 вин), Винодельня Раевское (6), Скалистый Берег и Усадьба Дивноморское (по 5). Бокал в среднем 665 рублей, бутылка — 5 750.",
+   "sommelier": "",
+   "address": "Краснодар, ул. Рашпилевская, 106А",
+   "website": "https://rodina-cafe.ru/",
+   "depth": 72,
+   "mono_grapes": 18,
+   "blends": 27,
+   "producers": 30,
+   "regions": 9,
+   "types_in_card": "6/6",
+   "autochthons": "5 : 10",
+   "sparkling_subtypes": "4/6",
+   "card_breakdown": {
+    "red": 23,
+    "white": 25,
+    "rose": 8,
+    "sparkling": 9,
+    "orange": 4,
+    "sweet": 3
+   },
+   "btg": {
+    "red": 10,
+    "white": 11,
+    "rose": 4,
+    "sparkling": 2,
+    "orange": 1,
+    "sweet": 2
+   },
+   "btg_types_count": "6/6",
+   "median_glass_rub": 665,
+   "median_bottle_rub": 5750
+  },
+  {
+   "rank": 5,
+   "name": "Пять традиций",
+   "city": "Краснодар",
+   "segment": "🏆 Лидер",
+   "nomination": "Лучший выбор по бокалам",
+   "cuisine": "русско-французская кухня",
+   "description": "66 позиций по бокалам — больше, чем в любой другой карте рейтинга: по 28 красных и белых, четыре игристых, по три розовых и сладких. По бокалу можно заказать четыре вина из каждых пяти. В карте 80 вин от 38 хозяйств; у 14 виноделен по одной позиции, у 12 — по две. Одиннадцать вин из российских автохтонных сортов, среди них Рубин Голодриги и Одесский Чёрный. Бокал в среднем 800 рублей, бутылка — 4 500.",
+   "sommelier": "",
+   "address": "Краснодар, ул. Красная, 101",
+   "website": "https://родная-кухня.рф/restoran-pyat-tradiczij/",
+   "depth": 80,
+   "mono_grapes": 27,
+   "blends": 23,
+   "producers": 38,
+   "regions": 8,
+   "types_in_card": "5/6",
+   "autochthons": "5 : 11",
+   "sparkling_subtypes": "4/6",
+   "card_breakdown": {
+    "red": 30,
+    "white": 31,
+    "rose": 3,
+    "sparkling": 12,
+    "orange": 1,
+    "sweet": 3
+   },
+   "btg": {
+    "red": 28,
+    "white": 28,
+    "rose": 3,
+    "sparkling": 4,
+    "orange": 0,
+    "sweet": 3
+   },
+   "btg_types_count": "5/6",
+   "median_glass_rub": 800,
+   "median_bottle_rub": 4500
+  },
+  {
+   "rank": 6,
+   "name": "Хлеб да ВинчиК",
+   "city": "Краснодар",
+   "segment": "🏆 Лидер",
+   "nomination": "",
+   "cuisine": "авторская европейская кухня, своя пекарня",
+   "description": "48 из 57 вин можно заказать по бокалу — почти вся карта, включая 24 красных, 15 белых и 6 розовых. Хозяйств всего 15, и почти у каждого в карте по нескольку вин: Константин Дзитоев и Агролайн (по 7), Gunko Winery, Винодельня Узунов, STN Winery и Вина Арпачина (по 5) — независимые виноделы Кубани, Дона, Севастополя, Северной Осетии и Дагестана. Восемь игристых — и все шесть стилей, от брюта до петната. Бутылка в среднем 4 000 рублей, бокал — 650.",
+   "sommelier": "",
+   "address": "Краснодар, ул. Мира, 40",
+   "website": "",
+   "depth": 57,
+   "mono_grapes": 17,
+   "blends": 18,
+   "producers": 15,
+   "regions": 9,
+   "types_in_card": "5/6",
+   "autochthons": "5 : 10",
+   "sparkling_subtypes": "6/6",
+   "card_breakdown": {
+    "red": 25,
+    "white": 16,
+    "rose": 6,
+    "sparkling": 8,
+    "orange": 2,
+    "sweet": 0
+   },
+   "btg": {
+    "red": 24,
+    "white": 15,
+    "rose": 6,
+    "sparkling": 1,
+    "orange": 2,
+    "sweet": 0
+   },
+   "btg_types_count": "5/6",
+   "median_glass_rub": 650,
+   "median_bottle_rub": 4000
+  },
+  {
+   "rank": 7,
+   "name": "Онегин Дача",
+   "city": "Ростов-на-Дону",
+   "segment": "🏆 Лидер",
+   "nomination": "",
+   "cuisine": "русская и французская кухня",
+   "description": "76 вин от 33 хозяйств. Шестнадцать вин из российских автохтонных сортов — каждое пятое в карте: Красностоп Золотовский, Цимлянский Чёрный, Сибирьковый, Кокур, Цветочный, Бастардо Магарачский. Рядом с кубанскими и крымскими хозяйствами — донские: Винодельня Ведерниковъ (5 вин) и Цимлянские вина (3). Шестнадцать игристых в пяти стилях, включая петнат. Главные хозяйства — Галицкий и Галицкий (6), Винодельня Ведерниковъ и Константин Дзитоев (по 5). Бутылка в среднем 5 400 рублей.",
+   "sommelier": "",
+   "address": "Ростов-на-Дону, пр. Чехова, 45Б",
+   "website": "https://onegin-dacha.ru/",
+   "depth": 76,
+   "mono_grapes": 28,
+   "blends": 18,
+   "producers": 33,
+   "regions": 9,
+   "types_in_card": "4/6",
+   "autochthons": "6 : 16",
+   "sparkling_subtypes": "5/6",
+   "card_breakdown": {
+    "red": 34,
+    "white": 20,
+    "rose": 3,
+    "sparkling": 16,
+    "orange": 1,
+    "sweet": 2
+   },
+   "btg": {
+    "red": 1,
+    "white": 0,
+    "rose": 1,
+    "sparkling": 1,
+    "orange": 0,
+    "sweet": 1
+   },
+   "btg_types_count": "4/6",
+   "median_glass_rub": 560,
+   "median_bottle_rub": 5400
+  },
+  {
+   "rank": 8,
+   "name": "Co-Co Chalet",
+   "city": "Сочи",
+   "segment": "🏆 Лидер",
+   "nomination": "",
+   "cuisine": "альпийская кухня",
+   "description": "61 вино от 28 хозяйств из десяти регионов России. Четырнадцать игристых в пяти стилях — почти четверть карты, есть Блан де Блан и Блан де Нуар. По бокалам — 11 позиций: красное, белое, розовое, игристое и сладкое. Главные хозяйства — Поместье Голубицкое (9 вин), Абрау-Дюрсо (6), Галицкий и Галицкий (5). Бокал в среднем 950 рублей, бутылка — 6 050.",
+   "sommelier": "",
+   "address": "Сочи, Красная Поляна, ул. Защитников Кавказа, 29",
+   "website": "https://cocochalet.ru/",
+   "depth": 61,
+   "mono_grapes": 17,
+   "blends": 24,
+   "producers": 28,
+   "regions": 10,
+   "types_in_card": "5/6",
+   "autochthons": "4 : 5",
+   "sparkling_subtypes": "5/6",
+   "card_breakdown": {
+    "red": 20,
+    "white": 18,
+    "rose": 4,
+    "sparkling": 14,
+    "orange": 1,
+    "sweet": 4
+   },
+   "btg": {
+    "red": 3,
+    "white": 3,
+    "rose": 2,
+    "sparkling": 1,
+    "orange": 0,
+    "sweet": 2
+   },
+   "btg_types_count": "5/6",
+   "median_glass_rub": 950,
+   "median_bottle_rub": 6050
+  },
+  {
+   "rank": 9,
+   "name": "Казак",
+   "city": "Ростов-на-Дону",
+   "segment": "🏆 Лидер",
+   "nomination": "",
+   "cuisine": "донская казачья кухня",
+   "description": "Семнадцать вин из российских автохтонных сортов на 67 позиций — каждое четвёртое в карте. Десять из них — Красностоп Золотовский; рядом Цимлянский Чёрный, Сибирьковый, Кокур, Кумшацкий Белый и Бастардо Магарачский. 23 бленда и 22 односортовых вина, 13 игристых. Главные хозяйства — Chateau de Talu (7 вин), Кубань-Вино (6), Галицкий и Галицкий (5). Бутылка в среднем 4 900 рублей, бокал — 540.",
+   "sommelier": "",
+   "address": "Ростов-на-Дону, пр. Чехова, 92/196",
+   "website": "https://kazak.rest/",
+   "depth": 67,
+   "mono_grapes": 22,
+   "blends": 23,
+   "producers": 23,
+   "regions": 8,
+   "types_in_card": "5/6",
+   "autochthons": "6 : 17",
+   "sparkling_subtypes": "3/6",
+   "card_breakdown": {
+    "red": 27,
+    "white": 19,
+    "rose": 3,
+    "sparkling": 13,
+    "orange": 2,
+    "sweet": 3
+   },
+   "btg": {
+    "red": 2,
+    "white": 2,
+    "rose": 0,
+    "sparkling": 1,
+    "orange": 1,
+    "sweet": 0
+   },
+   "btg_types_count": "4/6",
+   "median_glass_rub": 540,
+   "median_bottle_rub": 4900
+  },
+  {
+   "rank": 10,
+   "name": "Бутик-отель 39 by SATEEN GROUP",
+   "city": "Ростов-на-Дону",
+   "segment": "🏆 Лидер",
+   "nomination": "Лучший выбор автохтонов",
+   "cuisine": "ресторан «39» при бутик-отеле, локальные продукты",
+   "description": "Восемь российских автохтонных сортов — больше, чем в любой другой карте рейтинга: Цимлянский Чёрный, Красностоп Золотовский, Сибирьковый, Пухляковский, Цветочный, Кумшацкий Белый, Левокумский, Пробус. Вин из этих сортов — 22 из 53, больше 40% карты. Основа — донские хозяйства: Винодельня Ведерниковъ (6 вин) и Цимлянские вина (4); рядом Абрау-Дюрсо, Фанагория, Винодельня Раевское. Четырнадцать игристых в пяти стилях. Есть дегустационный сет — шесть вин по 75 мл.",
+   "sommelier": "",
+   "address": "Ростов-на-Дону, ул. Шаумяна, 39",
+   "website": "https://www.boutiquehotel39.ru/",
+   "depth": 53,
+   "mono_grapes": 22,
+   "blends": 21,
+   "producers": 22,
+   "regions": 8,
+   "types_in_card": "5/6",
+   "autochthons": "8 : 22",
+   "sparkling_subtypes": "5/6",
+   "card_breakdown": {
+    "red": 20,
+    "white": 12,
+    "rose": 4,
+    "sparkling": 14,
+    "orange": 1,
+    "sweet": 2
+   },
+   "btg": {
+    "red": 0,
+    "white": 2,
+    "rose": 1,
+    "sparkling": 1,
+    "orange": 0,
+    "sweet": 0
+   },
+   "btg_types_count": "3/6",
+   "median_glass_rub": 600,
+   "median_bottle_rub": 5500
+  },
+  {
+   "rank": 11,
+   "name": "YiaYia",
+   "city": "Краснодар",
+   "segment": "🥇 Топ-20",
+   "nomination": "",
+   "cuisine": "греческая кухня",
+   "description": "Десять регионов России на 36 вин — высокая географическая плотность для компактной карты. В карте есть вина всех шести типов — от красных до оранжевых и сладких; по бокалам — восемь позиций. У 13 из 21 хозяйства в карте по одной позиции. Опорные имена — Винодельня Раевское и Галицкий и Галицкий (по 4 вина), Николаев и сыновья, Шумринка, Собер Баш (по 3). Бутылка в среднем 5 900 рублей.",
+   "sommelier": "",
+   "address": "Краснодар, ул. Николая Кондратенко, 14",
+   "website": "https://yiayia.ru/",
+   "depth": 36,
+   "mono_grapes": 16,
+   "blends": 11,
+   "producers": 21,
+   "regions": 10,
+   "types_in_card": "6/6",
+   "autochthons": "3 : 4",
+   "sparkling_subtypes": "4/6",
+   "card_breakdown": {
+    "red": 12,
+    "white": 11,
+    "rose": 2,
+    "sparkling": 7,
+    "orange": 2,
+    "sweet": 2
+   },
+   "btg": {
+    "red": 2,
+    "white": 2,
+    "rose": 1,
+    "sparkling": 2,
+    "orange": 0,
+    "sweet": 1
+   },
+   "btg_types_count": "5/6",
+   "median_glass_rub": 670,
+   "median_bottle_rub": 5900
+  },
+  {
+   "rank": 12,
+   "name": "Станъ",
+   "city": "Краснодар",
+   "segment": "🥇 Топ-20",
+   "nomination": "",
+   "cuisine": "казачья и кубанская кухня",
+   "description": "46 из 75 вин можно заказать по бокалу. Бутылка в среднем стоит 3 900 рублей — самая доступная карта в двадцатке. Карта кубанская: 73 вина из 75 — с Тамани, из Анапы, Геленджика, Новороссийска и Крымска. Главные хозяйства — Фанагория (8 вин), Кубань-Вино (7), Галицкий и Галицкий (6), Скалистый Берег и Абрау-Дюрсо (по 5). 31 бленд, 11 игристых в пяти стилях.",
+   "sommelier": "",
+   "address": "Краснодар, Кубанская наб., 15",
+   "website": "https://родная-кухня.рф/stan-restoran/",
+   "depth": 75,
+   "mono_grapes": 19,
+   "blends": 31,
+   "producers": 26,
+   "regions": 7,
+   "types_in_card": "5/6",
+   "autochthons": "3 : 7",
+   "sparkling_subtypes": "5/6",
+   "card_breakdown": {
+    "red": 26,
+    "white": 30,
+    "rose": 3,
+    "sparkling": 11,
+    "orange": 0,
+    "sweet": 5
+   },
+   "btg": {
+    "red": 18,
+    "white": 21,
+    "rose": 2,
+    "sparkling": 1,
+    "orange": 0,
+    "sweet": 4
+   },
+   "btg_types_count": "5/6",
+   "median_glass_rub": 700,
+   "median_bottle_rub": 3900
+  },
+  {
+   "rank": 13,
+   "name": "Mamai-Cale",
+   "city": "Сочи",
+   "segment": "🥇 Топ-20",
+   "nomination": "",
+   "cuisine": "авторская кухня",
+   "description": "69 вин от 30 хозяйств, десять регионов России. Карта рассчитана на бутылочный заказ: по бокалам — две позиции. Шестнадцать игристых в пяти стилях — почти четверть карты. Тринадцать вин из российских автохтонных сортов. Главные хозяйства — Галицкий и Галицкий (9 вин), Шато Пино (5), Имение Сикоры, Усадьба Дивноморское, Винодельня Ведерниковъ и Абрау-Дюрсо (по 4). Бутылка в среднем 7 900 рублей.",
+   "sommelier": "",
+   "address": "Сочи, ул. Виноградная, 284/1",
+   "website": "https://mamai-cale.com/",
+   "depth": 69,
+   "mono_grapes": 20,
+   "blends": 27,
+   "producers": 30,
+   "regions": 10,
+   "types_in_card": "3/6",
+   "autochthons": "5 : 13",
+   "sparkling_subtypes": "5/6",
+   "card_breakdown": {
+    "red": 26,
+    "white": 22,
+    "rose": 2,
+    "sparkling": 16,
+    "orange": 2,
+    "sweet": 1
+   },
+   "btg": {
+    "red": 1,
+    "white": 1,
+    "rose": 0,
+    "sparkling": 0,
+    "orange": 0,
+    "sweet": 0
+   },
+   "btg_types_count": "2/6",
+   "median_glass_rub": 1050,
+   "median_bottle_rub": 7900
+  },
+  {
+   "rank": 14,
+   "name": "Feola's Kitchen & Wine",
+   "city": "Таганрог",
+   "segment": "🥇 Топ-20",
+   "nomination": "",
+   "cuisine": "авторская кухня",
+   "description": "47 из 56 вин можно заказать по бокалу — почти вся карта: 22 белых, 20 красных, по два розовых и оранжевых, одно сладкое. Бокал в среднем стоит 650 рублей, бутылка — 4 500. Семь игристых в пяти стилях. Главные хозяйства — Усадьба Дивноморское (7 вин), Фанагория, Belmas Winery и Галицкий и Галицкий (по 6), LeGato (5).",
+   "sommelier": "",
+   "address": "Таганрог, ул. Шмидта, 16А",
+   "website": "https://feolas.ru/",
+   "depth": 56,
+   "mono_grapes": 21,
+   "blends": 12,
+   "producers": 19,
+   "regions": 7,
+   "types_in_card": "5/6",
+   "autochthons": "4 : 5",
+   "sparkling_subtypes": "5/6",
+   "card_breakdown": {
+    "red": 21,
+    "white": 23,
+    "rose": 2,
+    "sparkling": 7,
+    "orange": 2,
+    "sweet": 1
+   },
+   "btg": {
+    "red": 20,
+    "white": 22,
+    "rose": 2,
+    "sparkling": 0,
+    "orange": 2,
+    "sweet": 1
+   },
+   "btg_types_count": "5/6",
+   "median_glass_rub": 650,
+   "median_bottle_rub": 4500
+  },
+  {
+   "rank": 15,
+   "name": "Le Ri",
+   "city": "Сочи",
+   "segment": "🥇 Топ-20",
+   "nomination": "",
+   "cuisine": "французская и паназиатская кухня",
+   "description": "По бокалам — 18 позиций, и среди них вино любого цвета и стиля, от красного до оранжевого и сладкого. В карте 64 вина от 19 хозяйств, в том числе линейка из шести оранжевых. Девять игристых в пяти стилях. Главные хозяйства — Chateau de Talu (9 вин), Винодельня Узунов (6), Галицкий и Галицкий, Винодельня Криница и Шато Пино (по 5). Премиальный уровень: бокал в среднем 1 360 рублей, бутылка — 7 000.",
+   "sommelier": "",
+   "address": "Сочи, Сириус, Олимпийский пр., 36/1, отель Mantera Supreme",
+   "website": "https://manterasupreme.ru/restaurants/le-ri",
+   "depth": 64,
+   "mono_grapes": 26,
+   "blends": 17,
+   "producers": 19,
+   "regions": 6,
+   "types_in_card": "5/6",
+   "autochthons": "2 : 5",
+   "sparkling_subtypes": "5/6",
+   "card_breakdown": {
+    "red": 23,
+    "white": 21,
+    "rose": 4,
+    "sparkling": 9,
+    "orange": 6,
+    "sweet": 1
+   },
+   "btg": {
+    "red": 5,
+    "white": 5,
+    "rose": 2,
+    "sparkling": 3,
+    "orange": 2,
+    "sweet": 1
+   },
+   "btg_types_count": "6/6",
+   "median_glass_rub": 1360,
+   "median_bottle_rub": 7000
+  },
+  {
+   "rank": 16,
+   "name": "Клево",
+   "city": "Сочи",
+   "segment": "🥇 Топ-20",
+   "nomination": "",
+   "cuisine": "рыба и морепродукты",
+   "description": "Карта собрана под рыбное меню: 13 тихих белых и 10 игристых из 38 позиций — больше половины карты. Одиннадцать регионов России на 38 вин; у 16 из 25 хозяйств в карте по одной позиции. Игристые — в пяти стилях, есть петнат и Блан де Нуар. Опорные имена — Поместье Голубицкое (4 вина), Усадьба Дивноморское и Винодельня Криница (по 3). Бутылка в среднем 6 500 рублей.",
+   "sommelier": "",
+   "address": "Сочи, ул. Москвина, 2",
+   "website": "https://sochi.klevo.rest/",
+   "depth": 38,
+   "mono_grapes": 19,
+   "blends": 8,
+   "producers": 25,
+   "regions": 11,
+   "types_in_card": "4/6",
+   "autochthons": "3 : 2",
+   "sparkling_subtypes": "5/6",
+   "card_breakdown": {
+    "red": 10,
+    "white": 13,
+    "rose": 3,
+    "sparkling": 10,
+    "orange": 1,
+    "sweet": 1
+   },
+   "btg": {
+    "red": 1,
+    "white": 2,
+    "rose": 1,
+    "sparkling": 2,
+    "orange": 0,
+    "sweet": 0
+   },
+   "btg_types_count": "4/6",
+   "median_glass_rub": 675,
+   "median_bottle_rub": 6500
+  },
+  {
+   "rank": 17,
+   "name": "Альпинисты",
+   "city": "Сочи",
+   "segment": "🥇 Топ-20",
+   "nomination": "",
+   "cuisine": "французская кухня, брассери",
+   "description": "51 вино от 27 хозяйств из десяти регионов России. У 12 виноделен в карте по одной позиции, у десяти — по две. Опорные имена — Alma Valley, Винодельня Криница, Абрау-Дюрсо и Галицкий и Галицкий (по 4 вина). Двенадцать игристых в пяти стилях — почти четверть карты. Восемь вин из донских автохтонных сортов — Красностоп Золотовский и Цимлянский Чёрный. Бутылка в среднем 7 300 рублей.",
+   "sommelier": "",
+   "address": "Сочи, Красная Поляна, ул. Эстонская, 105",
+   "website": "https://alpinisty-rest.ru/",
+   "depth": 51,
+   "mono_grapes": 17,
+   "blends": 17,
+   "producers": 27,
+   "regions": 10,
+   "types_in_card": "4/6",
+   "autochthons": "2 : 8",
+   "sparkling_subtypes": "5/6",
+   "card_breakdown": {
+    "red": 20,
+    "white": 14,
+    "rose": 3,
+    "sparkling": 12,
+    "orange": 1,
+    "sweet": 1
+   },
+   "btg": {
+    "red": 2,
+    "white": 2,
+    "rose": 1,
+    "sparkling": 1,
+    "orange": 0,
+    "sweet": 0
+   },
+   "btg_types_count": "4/6",
+   "median_glass_rub": 920,
+   "median_bottle_rub": 7300
+  },
+  {
+   "rank": 18,
+   "name": "Винотеррия",
+   "city": "Новороссийск",
+   "segment": "🥇 Топ-20",
+   "nomination": "",
+   "cuisine": "авторская южная кухня при винодельне",
+   "description": "Ресторан работает при винодельне Nesterov Winery — её вин в карте больше всего, восемь. Рядом — Галицкий и Галицкий (7), Шумринка (6), Скалистый Берег (5), Николаев и сыновья и Усадьба Маркотх (по 4). 51 вино от 13 хозяйств, 13 позиций по бокалам. Восемь вин из российских автохтонных сортов, среди них Рубин Голодриги и селекционная Виорика. Бутылка в среднем 5 400 рублей.",
+   "sommelier": "",
+   "address": "Новороссийск, 24-й км трассы А-290, х. Семигорский",
+   "website": "https://vinoterria.com/",
+   "depth": 51,
+   "mono_grapes": 20,
+   "blends": 12,
+   "producers": 13,
+   "regions": 7,
+   "types_in_card": "5/6",
+   "autochthons": "4 : 8",
+   "sparkling_subtypes": "3/6",
+   "card_breakdown": {
+    "red": 18,
+    "white": 19,
+    "rose": 5,
+    "sparkling": 6,
+    "orange": 0,
+    "sweet": 3
+   },
+   "btg": {
+    "red": 4,
+    "white": 3,
+    "rose": 3,
+    "sparkling": 2,
+    "orange": 0,
+    "sweet": 1
+   },
+   "btg_types_count": "5/6",
+   "median_glass_rub": 700,
+   "median_bottle_rub": 5400
+  },
+  {
+   "rank": 19,
+   "name": "Небо",
+   "city": "Геленджик",
+   "segment": "🥇 Топ-20",
+   "nomination": "",
+   "cuisine": "авторская кухня",
+   "description": "27 блендов на 56 вин — почти половина карты. 23 вина сделаны здесь же, в Геленджике. В карте есть вина всех шести типов, по бокалам — 14 позиций: шесть белых, четыре красных, два розовых, игристое и оранжевое. Главные хозяйства — Усадьба Дивноморское (6 вин), Виноградники Гай-Кодзора, Chateau de Talu и Скалистый Берег (по 5). Бокал в среднем 900 рублей, бутылка — 6 150.",
+   "sommelier": "",
+   "address": "Геленджик, ул. Революционная, 53, METROPOL Гранд Отель, 8 этаж",
+   "website": "https://metropol-gelendzhik.ru/",
+   "depth": 56,
+   "mono_grapes": 15,
+   "blends": 27,
+   "producers": 16,
+   "regions": 7,
+   "types_in_card": "6/6",
+   "autochthons": "3 : 4",
+   "sparkling_subtypes": "4/6",
+   "card_breakdown": {
+    "red": 19,
+    "white": 20,
+    "rose": 6,
+    "sparkling": 7,
+    "orange": 2,
+    "sweet": 2
+   },
+   "btg": {
+    "red": 4,
+    "white": 6,
+    "rose": 2,
+    "sparkling": 1,
+    "orange": 1,
+    "sweet": 0
+   },
+   "btg_types_count": "5/6",
+   "median_glass_rub": 900,
+   "median_bottle_rub": 6150
+  },
+  {
+   "rank": 20,
+   "name": "Red Fox",
+   "city": "Сочи",
+   "segment": "🥇 Топ-20",
+   "nomination": "",
+   "cuisine": "авторская кухня из локальных продуктов",
+   "description": "Бутылка в среднем стоит 8 950 рублей — самые дорогие позиции в рейтинге. 44 вина от 24 хозяйств, девять регионов России. У 14 виноделен в карте по одной позиции. Опорные имена — Галицкий и Галицкий (6 вин), Поместье Голубицкое (5), Долина Лефкадия, Uppa Winery и Loco Cimbali Winery (по 3). Восемь вин из российских автохтонных сортов — Красностоп Золотовский, Цимлянский Чёрный, Кокур.",
+   "sommelier": "",
+   "address": "Сочи, курорт «Роза Хутор», наб. Лаванда, 3",
+   "website": "https://www.redfoxsochi.ru/",
+   "depth": 44,
+   "mono_grapes": 19,
+   "blends": 11,
+   "producers": 24,
+   "regions": 9,
+   "types_in_card": "4/6",
+   "autochthons": "3 : 8",
+   "sparkling_subtypes": "3/6",
+   "card_breakdown": {
+    "red": 20,
+    "white": 13,
+    "rose": 2,
+    "sparkling": 7,
+    "orange": 1,
+    "sweet": 1
+   },
+   "btg": {
+    "red": 1,
+    "white": 1,
+    "rose": 0,
+    "sparkling": 1,
+    "orange": 0,
+    "sweet": 0
+   },
+   "btg_types_count": "3/6",
+   "median_glass_rub": 890,
+   "median_bottle_rub": 8950
+  }
+ ]
+}
+</script>
+
 <script>
 (function () {
   "use strict";
 
   const root = document.querySelector(".fg-cards");
   const entriesEl = document.getElementById("fg-entries");
-  const dataEl = document.getElementById("fg-cards-data");
   const titleEl = document.getElementById("fg-page-title");
   const subEl = document.getElementById("fg-page-sub");
   const countEl = document.getElementById("fg-count");
+  const regionEl = document.getElementById("fg-region");
 
-  let DATA = null;
-  try {
-    DATA = JSON.parse(dataEl.textContent);
-  } catch (e) {
-    console.error("fg-cards: failed to parse data", e);
+  /* ============ Regions ============ */
+  // Каждый регион — отдельный блок данных. Порядок здесь = порядок кнопок переключателя,
+  // первый регион открывается по умолчанию. Регион без блока или без ресторанов не показывается.
+  // addrPrefix — чем дополнить адрес без города (у Москвы адреса записаны без «Москва, »).
+  const REGIONS = [
+    { key: "moscow", dataId: "fg-cards-data",       label: "Москва",    addrPrefix: "Москва, ", addrCity: /москв/i },
+    { key: "south",  dataId: "fg-cards-data-south", label: "Юг России", addrPrefix: "",         addrCity: null },
+  ].filter(function (reg) {
+    const el = document.getElementById(reg.dataId);
+    if (!el) return false;
+    try {
+      reg.data = JSON.parse(el.textContent);
+    } catch (e) {
+      console.error("fg-cards: failed to parse " + reg.dataId, e);
+      return false;
+    }
+    return !!reg.data && Array.isArray(reg.data.restaurants) && reg.data.restaurants.length > 0;
+  });
+  if (!REGIONS.length) {
     entriesEl.innerHTML = '<p style="color:#7a6f60; padding: 20px;">Не удалось загрузить данные рейтинга.</p>';
     return;
   }
 
-  if (DATA.rating_title) titleEl.textContent = DATA.rating_title;
-  if (DATA.rating_subtitle) subEl.textContent = DATA.rating_subtitle;
-  if (countEl && Array.isArray(DATA.restaurants)) {
-    countEl.textContent = DATA.restaurants.length + " " + pluralRu(DATA.restaurants.length, "карта", "карты", "карт");
+  // Регион из ссылки: ?region=south или #south; ?city=Сочи без региона — регион, где есть этот город
+  function initialRegion() {
+    let want = "", city = "";
+    try {
+      const q = new URLSearchParams(window.location.search);
+      want = (q.get("region") || window.location.hash.replace(/^#/, "")).toLowerCase();
+      city = q.get("city") || "";
+    } catch (e) {}
+    const byKey = REGIONS.filter(function (reg) { return reg.key === want; })[0];
+    if (byKey) return byKey;
+    if (city) {
+      const byCity = REGIONS.filter(function (reg) {
+        return reg.data.restaurants.some(function (r) { return r.city === city; });
+      })[0];
+      if (byCity) return byCity;
+    }
+    return REGIONS[0];
   }
+  let REGION = initialRegion();
+  let DATA = REGION.data;
 
   function pluralRu(n, one, few, many) {
     const a = Math.abs(n) % 100;
@@ -915,7 +1858,7 @@
     if (addr || web) {
       const parts = [];
       if (addr) {
-        const fullAddr = /москв/i.test(addr) ? addr : 'Москва, ' + addr;
+        const fullAddr = (REGION.addrPrefix && !(REGION.addrCity && REGION.addrCity.test(addr))) ? REGION.addrPrefix + addr : addr;
         parts.push('<span class="fg-contact__val">' + escapeHtml(fullAddr) + '</span>');
       }
       if (web) {
@@ -968,7 +1911,7 @@
           '<span class="fg-entry__rank">' + escapeHtml(String(r.rank)) + '</span>' +
           '<span class="fg-entry__name-block">' +
             (r.cuisine ? '<span class="fg-entry__cuisine">' + escapeHtml(r.cuisine) + '</span>' : '') +
-            '<span class="fg-entry__name">' + escapeHtml(r.name || '') + '</span>' +
+            '<span class="fg-entry__name">' + escapeHtml(r.name || '') + (r.city ? '<span class="fg-entry__city"><span class="fg-entry__city-sep" aria-hidden="true">·</span>' + escapeHtml(r.city) + '</span>' : '') + '</span>' +
             (brief ? '<span class="fg-entry__brief">' + brief + '</span>' : '') +
           '</span>' +
           '<span class="fg-entry__right">' +
@@ -1000,7 +1943,7 @@
     }
     const extract = SORT_KEYS[currentSort] || SORT_KEYS.rank;
     const dirMul = (sortDir[currentSort] === "desc") ? -1 : 1;
-    const sorted = DATA.restaurants.slice().sort(function (a, b) {
+    const sorted = DATA.restaurants.filter(cityMatch).sort(function (a, b) {
       return (extract(a) - extract(b)) * dirMul;
     });
     entriesEl.innerHTML = sorted.map(buildEntry).join("");
@@ -1024,6 +1967,113 @@
 
     sendHeightToParent();
   }
+
+  /* ============ Region switcher ============ */
+  function regionMeta(reg) {
+    // «Москва · весна 2026» → «весна 2026 · 50 карт»
+    const sub = String(reg.data.rating_subtitle || "");
+    const i = sub.indexOf("·");
+    const season = i >= 0 ? sub.slice(i + 1).trim() : "";
+    const n = reg.data.restaurants.length;
+    return (season ? season + " · " : "") + n + " " + pluralRu(n, "карта", "карты", "карт");
+  }
+  function applyRegionHeader() {
+    if (DATA.rating_title) titleEl.textContent = DATA.rating_title;
+    if (DATA.rating_subtitle) subEl.textContent = DATA.rating_subtitle;
+    // при переключателе подзаголовок лишний: регион и сезон написаны на кнопках
+    subEl.hidden = REGIONS.length > 1;
+    if (countEl) countEl.textContent = DATA.restaurants.length + " " + pluralRu(DATA.restaurants.length, "карта", "карты", "карт");
+  }
+  function buildRegionSwitcher() {
+    if (!regionEl || REGIONS.length < 2) return;
+    regionEl.innerHTML = REGIONS.map(function (reg) {
+      const on = reg === REGION;
+      return '<button class="fg-region__btn' + (on ? ' is-active' : '') + '" data-region="' + escapeHtml(reg.key) +
+        '" type="button" aria-pressed="' + (on ? 'true' : 'false') + '">' +
+          '<span class="fg-region__name">' + escapeHtml(reg.label) + '</span>' +
+          '<span class="fg-region__meta">' + escapeHtml(regionMeta(reg)) + '</span>' +
+        '</button>';
+    }).join("");
+    regionEl.hidden = false;
+  }
+  function setRegion(reg) {
+    REGION = reg;
+    DATA = reg.data;
+    regionEl.querySelectorAll(".fg-region__btn").forEach(function (b) {
+      const on = b.getAttribute("data-region") === reg.key;
+      b.classList.toggle("is-active", on);
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    applyRegionHeader();
+    buildCityFilter("");
+    render();
+    // адрес страницы — под выбранный регион, чтобы ссылкой можно было поделиться (в iframe не мешает)
+    try {
+      const u = new URL(window.location.href);
+      if (reg === REGIONS[0]) u.searchParams.delete("region"); else u.searchParams.set("region", reg.key);
+      u.searchParams.delete("city");
+      u.hash = "";
+      window.history.replaceState(null, "", u.toString());
+    } catch (e) {}
+  }
+  if (regionEl) regionEl.addEventListener("click", function (e) {
+    const btn = e.target && e.target.closest ? e.target.closest(".fg-region__btn") : null;
+    if (!btn) return;
+    const reg = REGIONS.filter(function (x) { return x.key === btn.getAttribute("data-region"); })[0];
+    if (reg && reg !== REGION) setRegion(reg);
+  });
+
+  /* ============ City filter ============ */
+  // Строка «Город» — только если в регионе больше одного города (у Москвы город один — строки нет).
+  // Чипы: «Все» + города по числу ресторанов (при равенстве — по лучшему месту). Выбирается один
+  // город; повторный клик по активному или «Все» — сброс. Места (rank) не перенумеровываются.
+  const cityEl = document.getElementById("fg-city-filter");
+  let currentCity = "";
+  function cityMatch(r) { return !currentCity || (r.city || "") === currentCity; }
+  function buildCityFilter(preselect) {
+    currentCity = "";
+    if (!cityEl) return;
+    cityEl.querySelectorAll(".fg-city__btn").forEach(function (b) { b.parentNode.removeChild(b); });
+    const stat = {};
+    DATA.restaurants.forEach(function (r) {
+      const c = r.city || "";
+      if (!c) return;
+      if (!stat[c]) stat[c] = { n: 0, best: Infinity };
+      stat[c].n += 1;
+      stat[c].best = Math.min(stat[c].best, r.rank || Infinity);
+    });
+    const cities = Object.keys(stat).sort(function (a, b) {
+      return (stat[b].n - stat[a].n) || (stat[a].best - stat[b].best);
+    });
+    if (cities.length < 2) { cityEl.hidden = true; return; }
+    if (preselect && stat[preselect]) currentCity = preselect;
+    const chips = [{ key: "", label: "Все", n: DATA.restaurants.length }].concat(
+      cities.map(function (c) { return { key: c, label: c, n: stat[c].n }; }));
+    cityEl.insertAdjacentHTML("beforeend", chips.map(function (c) {
+      const on = c.key === currentCity;
+      return '<button class="fg-city__btn' + (on ? ' is-active' : '') + '" data-city="' + escapeHtml(c.key) +
+        '" type="button" aria-pressed="' + (on ? 'true' : 'false') + '">' + escapeHtml(c.label) +
+        '<span class="fg-city__count">' + c.n + '</span></button>';
+    }).join(""));
+    cityEl.hidden = false;
+  }
+  if (cityEl) cityEl.addEventListener("click", function (e) {
+    const btn = e.target && e.target.closest ? e.target.closest(".fg-city__btn") : null;
+    if (!btn) return;
+    const key = btn.getAttribute("data-city") || "";
+    currentCity = (key === currentCity) ? "" : key;
+    cityEl.querySelectorAll(".fg-city__btn").forEach(function (b) {
+      const on = (b.getAttribute("data-city") || "") === currentCity;
+      b.classList.toggle("is-active", on);
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    render();
+  });
+  (function () {
+    let wanted = "";
+    try { wanted = new URLSearchParams(window.location.search).get("city") || ""; } catch (e) {}
+    buildCityFilter(wanted);
+  })();
 
   /* ============ Sort controls ============ */
   const sortButtons = root.querySelectorAll(".fg-sort__btn");
@@ -1085,6 +2135,8 @@
     }
   });
 
+  applyRegionHeader();
+  buildRegionSwitcher();
   render();
 })();
 </script>
